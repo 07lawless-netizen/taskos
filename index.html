@@ -871,8 +871,7 @@ function WeeklySummary({ tasks }) {
     }
 
     lines.push(`Stats: ${completed.length} tasks completed, ${frogsCompleted.length} priority frog${frogsCompleted.length !== 1 ? "s" : ""} tackled, ${overdue.length} overdue.`);
-    return lines.join("
-");
+    return lines.join("\n");
   }
 
   function copyToClipboard() {
@@ -2260,5 +2259,5 @@ function App() {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
   </script>
-<script src="https://api.wire.threatspike.com/device/inject.js" type="text/javascript"></script></body>
+</body>
 </html>
