@@ -16,6 +16,8 @@ const { useState, useEffect, useRef, useCallback } = React;
 const STORAGE_KEY = "vtm_tasks_v1";
 const WELLBEING_KEY = "vtm_wellbeing_v1";
 const USER_KEY = "vtm_user_v1";
+const PROJECTS_KEY = "vtm_projects_v1";
+const WORKHOURS_KEY = "vtm_workhours_v1";
 const COLORS = {
   bg: "#f4f4f6", surface: "#ffffff", surface2: "#f9f9fb", surface3: "#efeff2",
   border: "#e0e0e6", borderHover: "#c8c8d4", text: "#1a1a24", textMuted: "#9090a0",
@@ -46,9 +48,9 @@ function today() { return new Date().toISOString().split("T")[0]; }
 function daysAgo(n) { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split("T")[0]; }
 
 const SAMPLE_TASKS = [
-  { id: generateId(), title: "Design new landing page", description: "Revamp the homepage with updated branding and copy. Needs to work across mobile and desktop.", priority: "High", status: "In Progress", due: today(), isFrog: true, createdAt: new Date(Date.now() - 2*86400000).toISOString(), completedAt: null, aiBreakdown: null, happiness: null, subtasks: [{ id: generateId(), title: "Wireframe layout", done: true }, { id: generateId(), title: "Write hero copy", done: true }, { id: generateId(), title: "Source imagery", done: false }, { id: generateId(), title: "Dev handoff", done: false }] },
-  { id: generateId(), title: "Q3 analytics report", description: "Compile performance data and present findings to stakeholders", priority: "High", status: "To Do", due: new Date(Date.now() + 2*86400000).toISOString().split("T")[0], isFrog: false, createdAt: new Date(Date.now() - 5*86400000).toISOString(), completedAt: null, aiBreakdown: null, happiness: null, subtasks: [{ id: generateId(), title: "Pull data from dashboard", done: false }, { id: generateId(), title: "Build slide deck", done: false }] },
-  { id: generateId(), title: "Update dependencies", description: "Audit and update all npm packages to latest stable versions", priority: "Low", status: "To Do", due: "", isFrog: false, createdAt: new Date(Date.now() - 86400000).toISOString(), completedAt: null, aiBreakdown: null, happiness: null, subtasks: [] },
+  { id: generateId(), projectId: null, timeSpent: 0, estimatedMins: 120, title: "Design new landing page", description: "Revamp the homepage with updated branding and copy. Needs to work across mobile and desktop.", priority: "High", status: "In Progress", due: today(), isFrog: true, createdAt: new Date(Date.now() - 2*86400000).toISOString(), completedAt: null, aiBreakdown: null, happiness: null, subtasks: [{ id: generateId(), title: "Wireframe layout", done: true }, { id: generateId(), title: "Write hero copy", done: true }, { id: generateId(), title: "Source imagery", done: false }, { id: generateId(), title: "Dev handoff", done: false }] },
+  { id: generateId(), projectId: null, timeSpent: 0, estimatedMins: 90, title: "Q3 analytics report", description: "Compile performance data and present findings to stakeholders", priority: "High", status: "To Do", due: new Date(Date.now() + 2*86400000).toISOString().split("T")[0], isFrog: false, createdAt: new Date(Date.now() - 5*86400000).toISOString(), completedAt: null, aiBreakdown: null, happiness: null, subtasks: [{ id: generateId(), title: "Pull data from dashboard", done: false }, { id: generateId(), title: "Build slide deck", done: false }] },
+  { id: generateId(), projectId: null, timeSpent: 0, estimatedMins: 30, title: "Update dependencies", description: "Audit and update all npm packages to latest stable versions", priority: "Low", status: "To Do", due: "", isFrog: false, createdAt: new Date(Date.now() - 86400000).toISOString(), completedAt: null, aiBreakdown: null, happiness: null, subtasks: [] },
 ];
 
 const css = `
@@ -515,6 +517,11 @@ function WellbeingView({ checkins, tasks, onOpenCheckin }) {
           No check-ins yet. Click "Check in now" to start tracking your wellbeing.
         </div>
       )}
+
+      <div style={{ marginTop: 24 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Patterns & Correlations</h3>
+        <CorrelationAnalysis tasks={tasks} checkins={checkins} />
+      </div>
     </div>
   );
 }
@@ -542,21 +549,24 @@ function ProgressBar({ subtasks }) {
 }
 
 // ── TaskCard ───────────────────────────────────────────────────────────────────
-function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, isDragging, onSaveBreakdown }) {
+function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, isDragging, onSaveBreakdown, onTimeUpdate, projects }) {
   const isOverdue = task.due && task.due < today() && task.status !== "Done";
   const isDueToday = task.due === today();
+  const project = projects?.find(p => p.id === task.projectId);
   return (
     <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
       style={{ background: task.isFrog ? COLORS.frogDim : COLORS.surface, border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}`, borderRadius: 10, padding: 14, marginBottom: 8, cursor: "grab", opacity: isDragging ? 0.4 : 1, transition: "all 0.15s", position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
       {task.isFrog && <div style={{ position: "absolute", top: 0, right: 0, background: COLORS.frog, color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderBottomLeftRadius: 8 }}>🐸 FROG</div>}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
         <Badge priority={task.priority} />
+        {project && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: getProjectColor(project.colorId).bg, color: getProjectColor(project.colorId).text, border: `1px solid ${getProjectColor(project.colorId).border}` }}>{project.name}</span>}
         {task.due && <span style={{ fontSize: 10, color: isOverdue ? COLORS.high : isDueToday ? COLORS.medium : COLORS.textMuted, padding: "3px 8px", background: isOverdue ? COLORS.highDim : isDueToday ? COLORS.mediumDim : COLORS.surface3, borderRadius: 4, fontWeight: 500 }}>{isOverdue ? "⚠ " : isDueToday ? "📅 " : ""}{task.due}</span>}
         {task.happiness && <span style={{ fontSize: 10, padding: "3px 8px", background: COLORS.surface3, borderRadius: 4 }}>{"⭐".repeat(task.happiness)}</span>}
       </div>
       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, lineHeight: 1.4, paddingRight: task.isFrog ? 56 : 0 }}>{task.title}</div>
       {task.description && <div style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.5, marginBottom: 8 }}>{task.description.slice(0, 120)}{task.description.length > 120 ? "…" : ""}</div>}
       <ProgressBar subtasks={task.subtasks} />
+      <TimeTracker task={task} onUpdate={onTimeUpdate} />
       <div style={{ display: "flex", gap: 5, marginTop: 12, alignItems: "center" }}>
         <button onClick={() => onEdit(task)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}>Edit</button>
         <button onClick={() => onFrog(task.id)} style={{ background: task.isFrog ? COLORS.frogDim : COLORS.surface3, color: task.isFrog ? COLORS.frog : COLORS.textMuted, borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}` }}>{task.isFrog ? "🐸 Unfrog" : "🐸"}</button>
@@ -571,8 +581,8 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
 }
 
 // ── TaskModal ──────────────────────────────────────────────────────────────────
-function TaskModal({ task, onSave, onClose }) {
-  const [form, setForm] = useState(task || { title: "", description: "", priority: "Medium", status: "To Do", due: "", subtasks: [], isFrog: false, createdAt: new Date().toISOString(), completedAt: null, aiBreakdown: null, happiness: null });
+function TaskModal({ task, onSave, onClose, projects }) {
+  const [form, setForm] = useState(task || { title: "", description: "", priority: "Medium", status: "To Do", due: "", subtasks: [], isFrog: false, createdAt: new Date().toISOString(), completedAt: null, aiBreakdown: null, happiness: null, projectId: null, timeSpent: 0, estimatedMins: "" });
   const [newSub, setNewSub] = useState("");
   const [dueSuggesting, setDueSuggesting] = useState(false);
   const [dueSuggestion, setDueSuggestion] = useState(null);
@@ -605,6 +615,19 @@ function TaskModal({ task, onSave, onClose }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>TITLE *</label><input value={form.title} onChange={e => setF("title", e.target.value)} placeholder="What needs to be done?" /></div>
           <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>DESCRIPTION</label><textarea value={form.description} onChange={e => setF("description", e.target.value)} placeholder="Add context or notes…" /></div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 0 }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>PROJECT</label>
+              <select value={form.projectId || ""} onChange={e => setF("projectId", e.target.value || null)}>
+                <option value="">No project</option>
+                {(projects || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>EST. TIME (mins)</label>
+              <input type="number" min={1} value={form.estimatedMins} onChange={e => setF("estimatedMins", e.target.value ? Number(e.target.value) : "")} placeholder="e.g. 60" />
+            </div>
+          </div>
           <div className="form-grid-3">
             <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>PRIORITY</label><select value={form.priority} onChange={e => setF("priority", e.target.value)}>{Object.keys(PRIORITY_CONFIG).map(p => <option key={p}>{p}</option>)}</select></div>
             <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>STATUS</label><select value={form.status} onChange={e => setF("status", e.target.value)}>{STATUS_COLS.map(s => <option key={s}>{s}</option>)}</select></div>
@@ -1037,13 +1060,53 @@ function CalendarView({ tasks, onEdit }) {
 
 // ── Focus Mode ─────────────────────────────────────────────────────────────────
 function FocusMode({ task, onClose }) {
-  const WORK_MINS = 25;
-  const BREAK_MINS = 5;
-  const [phase, setPhase] = useState("work"); // work | break
-  const [seconds, setSeconds] = useState(WORK_MINS * 60);
+  const PRESETS = [
+    { label: "Pomodoro", work: 25, brk: 5 },
+    { label: "Deep Work", work: 50, brk: 10 },
+    { label: "Quick", work: 15, brk: 3 },
+    { label: "Custom", work: null, brk: null },
+  ];
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [preset, setPreset] = useState(0);
+  const [workMins, setWorkMins] = useState(25);
+  const [breakMins, setBreakMins] = useState(5);
+  const [customWork, setCustomWork] = useState(25);
+  const [customBreak, setCustomBreak] = useState(5);
+  const [phase, setPhase] = useState("work");
+  const [seconds, setSeconds] = useState(workMins * 60);
   const [running, setRunning] = useState(false);
   const [cycles, setCycles] = useState(0);
   const intervalRef = useRef(null);
+
+  function applyPreset(idx) {
+    const p = PRESETS[idx];
+    setPreset(idx);
+    if (p.work !== null) {
+      setWorkMins(p.work);
+      setBreakMins(p.brk);
+      resetTimer(p.work, p.brk);
+    }
+  }
+
+  function applyCustom() {
+    const w = Math.max(1, Math.min(120, customWork));
+    const b = Math.max(1, Math.min(60, customBreak));
+    setWorkMins(w); setBreakMins(b);
+    resetTimer(w, b);
+    setShowSettings(false);
+  }
+
+  function resetTimer(w, b) {
+    clearInterval(intervalRef.current);
+    setRunning(false);
+    setPhase("work");
+    setSeconds((w || workMins) * 60);
+    setCycles(0);
+  }
+
+  function reset() { resetTimer(workMins, breakMins); }
+  function toggle() { setRunning(r => !r); }
 
   useEffect(() => {
     if (running) {
@@ -1055,10 +1118,10 @@ function FocusMode({ task, onClose }) {
             if (phase === "work") {
               setCycles(c => c + 1);
               setPhase("break");
-              setSeconds(BREAK_MINS * 60);
+              setSeconds(breakMins * 60);
             } else {
               setPhase("work");
-              setSeconds(WORK_MINS * 60);
+              setSeconds(workMins * 60);
             }
             return 0;
           }
@@ -1067,19 +1130,65 @@ function FocusMode({ task, onClose }) {
       }, 1000);
     }
     return () => clearInterval(intervalRef.current);
-  }, [running, phase]);
-
-  function reset() { clearInterval(intervalRef.current); setRunning(false); setPhase("work"); setSeconds(WORK_MINS * 60); }
-  function toggle() { setRunning(r => !r); }
+  }, [running, phase, workMins, breakMins]);
 
   const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
   const secs = String(seconds % 60).padStart(2, "0");
-  const pct = phase === "work" ? ((WORK_MINS * 60 - seconds) / (WORK_MINS * 60)) * 100 : ((BREAK_MINS * 60 - seconds) / (BREAK_MINS * 60)) * 100;
+  const totalSecs = phase === "work" ? workMins * 60 : breakMins * 60;
+  const pct = totalSecs > 0 ? ((totalSecs - seconds) / totalSecs) * 100 : 0;
   const r = 80, circ = 2 * Math.PI * r;
+  const isAtStart = seconds === totalSecs;
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0f0f16", zIndex: 3000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <button onClick={onClose} style={{ position: "absolute", top: 24, right: 24, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>✕ Exit Focus</button>
+      
+      {/* Top bar */}
+      <div style={{ position: "absolute", top: 20, left: 24, right: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button onClick={() => setShowSettings(s => !s)} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600 }}>
+          ⚙ Settings
+        </button>
+        <button onClick={onClose} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>✕ Exit</button>
+      </div>
+
+      {/* Settings panel */}
+      {showSettings && (
+        <div style={{ position: "absolute", top: 64, left: 24, background: "#1a1a26", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 20, width: 280, zIndex: 10 }}>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 12 }}>Timer Presets</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+            {PRESETS.map((p, i) => (
+              <button key={i} onClick={() => { applyPreset(i); if (p.work !== null) setShowSettings(false); }}
+                style={{ background: preset === i ? COLORS.accent : "rgba(255,255,255,0.08)", color: "#fff", borderRadius: 7, padding: "6px 12px", fontSize: 12, fontWeight: 600, border: preset === i ? "none" : "1px solid rgba(255,255,255,0.1)" }}>
+                {p.label}{p.work ? ` ${p.work}/${p.brk}` : ""}
+              </button>
+            ))}
+          </div>
+
+          {preset === 3 && (
+            <div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 10 }}>Custom Duration (minutes)</div>
+              <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>Work</div>
+                  <input type="number" min={1} max={120} value={customWork}
+                    onChange={e => setCustomWork(Number(e.target.value))}
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: 7, padding: "8px 10px", fontSize: 14, width: "100%", textAlign: "center" }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>Break</div>
+                  <input type="number" min={1} max={60} value={customBreak}
+                    onChange={e => setCustomBreak(Number(e.target.value))}
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff", borderRadius: 7, padding: "8px 10px", fontSize: 14, width: "100%", textAlign: "center" }} />
+                </div>
+              </div>
+              <button onClick={applyCustom} style={{ width: "100%", background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "9px", fontSize: 13, fontWeight: 600 }}>Apply Custom Timer</button>
+            </div>
+          )}
+
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.08)", fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center" }}>
+            Current: {workMins} min work / {breakMins} min break
+          </div>
+        </div>
+      )}
 
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
         {phase === "work" ? "🎯 Focus Session" : "☕ Break Time"} · {cycles} cycle{cycles !== 1 ? "s" : ""} complete
@@ -1089,7 +1198,7 @@ function FocusMode({ task, onClose }) {
         {task.isFrog && <span style={{ marginRight: 8 }}>🐸</span>}{task.title}
       </div>
 
-      <div style={{ position: "relative", marginBottom: 40 }}>
+      <div style={{ position: "relative", marginBottom: 16 }}>
         <svg width={200} height={200} viewBox="0 0 200 200">
           <circle cx={100} cy={100} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={8} />
           <circle cx={100} cy={100} r={r} fill="none"
@@ -1102,13 +1211,17 @@ function FocusMode({ task, onClose }) {
         </svg>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <div style={{ fontSize: 42, fontWeight: 800, color: "#fff", fontFamily: "monospace", letterSpacing: -1 }}>{mins}:{secs}</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{phase === "work" ? "work" : "break"}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{phase === "work" ? `${workMins} min work` : `${breakMins} min break`}</div>
         </div>
+      </div>
+
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginBottom: 28 }}>
+        {PRESETS[preset].label} · {workMins}/{breakMins} min
       </div>
 
       <div style={{ display: "flex", gap: 12 }}>
         <button onClick={toggle} style={{ background: phase === "work" ? COLORS.accent : COLORS.frog, color: "#fff", borderRadius: 10, padding: "14px 36px", fontSize: 16, fontWeight: 700, minWidth: 140 }}>
-          {running ? "⏸ Pause" : seconds === (phase === "work" ? WORK_MINS : BREAK_MINS) * 60 ? "▶ Start" : "▶ Resume"}
+          {running ? "⏸ Pause" : isAtStart ? "▶ Start" : "▶ Resume"}
         </button>
         <button onClick={reset} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "14px 20px", fontSize: 16 }}>↺</button>
       </div>
@@ -1150,6 +1263,510 @@ The date must be today or in the future. High priority = sooner. Consider realis
   } catch(e) {
     return null;
   }
+}
+
+
+
+// ── Project / Tag Colour Palette ───────────────────────────────────────────────
+const PROJECT_COLORS = [
+  { id: "violet",  bg: "#ede9fe", border: "#c4b5fd", text: "#6d28d9" },
+  { id: "blue",    bg: "#dbeafe", border: "#93c5fd", text: "#1d4ed8" },
+  { id: "green",   bg: "#dcfce7", border: "#86efac", text: "#15803d" },
+  { id: "amber",   bg: "#fef3c7", border: "#fcd34d", text: "#b45309" },
+  { id: "red",     bg: "#fee2e2", border: "#fca5a5", text: "#b91c1c" },
+  { id: "pink",    bg: "#fce7f3", border: "#f9a8d4", text: "#be185d" },
+  { id: "cyan",    bg: "#cffafe", border: "#67e8f9", text: "#0e7490" },
+  { id: "slate",   bg: "#f1f5f9", border: "#cbd5e1", text: "#475569" },
+];
+
+function getProjectColor(colorId) {
+  return PROJECT_COLORS.find(c => c.id === colorId) || PROJECT_COLORS[0];
+}
+
+// ── Project Manager Modal ──────────────────────────────────────────────────────
+function ProjectManagerModal({ projects, onSave, onDelete, onClose }) {
+  const [name, setName] = useState("");
+  const [colorId, setColorId] = useState("violet");
+  const [editing, setEditing] = useState(null);
+
+  function handleAdd() {
+    if (!name.trim()) return;
+    if (editing) {
+      onSave({ ...editing, name: name.trim(), colorId });
+      setEditing(null);
+    } else {
+      onSave({ id: generateId(), name: name.trim(), colorId });
+    }
+    setName(""); setColorId("violet");
+  }
+
+  function startEdit(p) { setEditing(p); setName(p.name); setColorId(p.colorId); }
+  function cancelEdit() { setEditing(null); setName(""); setColorId("violet"); }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 480, maxHeight: "85vh", overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700 }}>Manage Projects</h2>
+          <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>✕</button>
+        </div>
+
+        {/* Add / Edit form */}
+        <div style={{ background: COLORS.surface2, borderRadius: 10, padding: 16, marginBottom: 20, border: `1px solid ${COLORS.border}` }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, marginBottom: 10 }}>{editing ? "EDIT PROJECT" : "NEW PROJECT"}</div>
+          <input value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAdd()} placeholder="Project name…" style={{ marginBottom: 12 }} />
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            {PROJECT_COLORS.map(c => (
+              <button key={c.id} onClick={() => setColorId(c.id)} style={{ width: 28, height: 28, borderRadius: "50%", background: c.bg, border: `3px solid ${colorId === c.id ? c.text : c.border}`, transition: "border 0.15s" }} />
+            ))}
+          </div>
+          {name.trim() && (
+            <div style={{ marginBottom: 12 }}>
+              <span style={{ background: getProjectColor(colorId).bg, color: getProjectColor(colorId).text, border: `1px solid ${getProjectColor(colorId).border}`, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 600 }}>
+                {name}
+              </span>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={handleAdd} disabled={!name.trim()} style={{ background: COLORS.accent, color: "#fff", borderRadius: 7, padding: "8px 16px", fontSize: 13, fontWeight: 600, opacity: name.trim() ? 1 : 0.4 }}>
+              {editing ? "Save" : "Add Project"}
+            </button>
+            {editing && <button onClick={cancelEdit} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 7, padding: "8px 14px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>Cancel</button>}
+          </div>
+        </div>
+
+        {/* Project list */}
+        {projects.length === 0 ? (
+          <div style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 14, padding: 20 }}>No projects yet. Add one above.</div>
+        ) : (
+          projects.map(p => {
+            const c = getProjectColor(p.colorId);
+            return (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: COLORS.surface2, borderRadius: 9, marginBottom: 8, border: `1px solid ${COLORS.border}` }}>
+                <div style={{ width: 12, height: 12, borderRadius: "50%", background: c.bg, border: `2px solid ${c.text}`, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
+                <button onClick={() => startEdit(p)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 6, padding: "4px 10px", fontSize: 12 }}>Edit</button>
+                <button onClick={() => onDelete(p.id)} style={{ background: COLORS.highDim, color: COLORS.high, borderRadius: 6, padding: "4px 8px", fontSize: 12 }}>✕</button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Time Tracker ───────────────────────────────────────────────────────────────
+function TimeTracker({ task, onUpdate }) {
+  const [running, setRunning] = useState(false);
+  const [startedAt, setStartedAt] = useState(null);
+  const [elapsed, setElapsed] = useState(task.timeSpent || 0); // seconds
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(task.timeSpent + Math.floor((Date.now() - startedAt) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [running, startedAt]);
+
+  function toggle() {
+    if (running) {
+      clearInterval(intervalRef.current);
+      const newTotal = task.timeSpent + Math.floor((Date.now() - startedAt) / 1000);
+      setElapsed(newTotal);
+      onUpdate(task.id, newTotal);
+      setRunning(false);
+      setStartedAt(null);
+    } else {
+      setStartedAt(Date.now());
+      setRunning(true);
+    }
+  }
+
+  function reset() {
+    clearInterval(intervalRef.current);
+    setRunning(false);
+    setStartedAt(null);
+    setElapsed(0);
+    onUpdate(task.id, 0);
+  }
+
+  function fmtTime(s) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}h ${String(m).padStart(2,"0")}m`;
+    return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
+  }
+
+  const estimated = task.estimatedMins ? task.estimatedMins * 60 : null;
+  const pct = estimated ? Math.min((elapsed / estimated) * 100, 100) : null;
+
+  return (
+    <div style={{ marginTop: 10, padding: "10px 12px", background: COLORS.surface2, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, flex: 1 }}>⏱ TIME</span>
+        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: running ? COLORS.accent : COLORS.text }}>
+          {fmtTime(elapsed)}
+        </span>
+        {estimated && <span style={{ fontSize: 11, color: COLORS.textMuted }}>/ {fmtTime(estimated)}</span>}
+        <button onClick={toggle} style={{ background: running ? COLORS.highDim : COLORS.accentDim, color: running ? COLORS.high : COLORS.accent, borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, border: "none" }}>
+          {running ? "⏹ Stop" : "▶ Start"}
+        </button>
+        {elapsed > 0 && !running && <button onClick={reset} style={{ background: "none", color: COLORS.textMuted, fontSize: 13 }}>↺</button>}
+      </div>
+      {pct !== null && (
+        <div style={{ marginTop: 8, height: 3, background: COLORS.surface3, borderRadius: 2, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? COLORS.high : COLORS.accent, borderRadius: 2, transition: "width 1s linear" }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AI Daily Plan Modal ────────────────────────────────────────────────────────
+function AIDailyPlanModal({ tasks, checkins, onClose }) {
+  const [state, setState] = useState("idle"); // idle | loading | done | error
+  const [plan, setPlan] = useState(null);
+
+  const todayCheckin = checkins.find(c => c.date === today());
+  const activeTasks = tasks.filter(t => t.status !== "Done");
+
+  async function generatePlan() {
+    setState("loading");
+    const taskList = activeTasks.map((t, i) =>
+      `${i+1}. "${t.title}" | Priority: ${t.priority} | Due: ${t.due || "no date"} | Status: ${t.status}${t.isFrog ? " | FROG TASK" : ""}${t.subtasks.length ? ` | ${t.subtasks.filter(s=>s.done).length}/${t.subtasks.length} subtasks done` : ""}`
+    ).join("\n");
+
+    const wellbeing = todayCheckin
+      ? `Today's check-in — Mood: ${todayCheckin.mood}/5, Energy: ${todayCheckin.energy}/5, Stress: ${todayCheckin.stress}/5, Sleep: ${todayCheckin.sleep}/5`
+      : "No check-in today yet";
+
+    const prompt = `You are a productivity coach. A user wants a suggested order to tackle their tasks today.
+
+Today is ${today()} (${new Date().toLocaleDateString("en-GB", { weekday: "long" })}).
+${wellbeing}
+
+Their active tasks:
+${taskList || "No active tasks"}
+
+Based on priority, due dates, frog tasks (most important), subtask progress, and their current energy/stress levels, suggest an optimal order to work through these tasks today.
+
+Respond with ONLY this JSON format (no markdown, no extra text):
+{
+  "greeting": "A short motivational sentence personalised to their energy/mood today (max 20 words)",
+  "plan": [
+    { "taskTitle": "exact task title", "reason": "one short sentence why this order", "tip": "one practical tip for this task (optional, can be empty string)" }
+  ],
+  "insight": "One sentence overall insight about their day based on the tasks and wellbeing data"
+}`;
+
+    try {
+      const response = await fetch("/.netlify/functions/claude", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await response.json();
+      const text = (data.text || "").trim().replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(text);
+      setPlan(parsed);
+      setState("done");
+    } catch(e) { setState("error"); }
+  }
+
+  useEffect(() => { generatePlan(); }, []);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 540, maxHeight: "90vh", overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700 }}>🤖 AI Daily Plan</h2>
+            <p style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {state === "done" && <button onClick={generatePlan} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600 }}>↺ Refresh</button>}
+            <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>✕</button>
+          </div>
+        </div>
+
+        {state === "loading" && (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <div className="ai-thinking" style={{ display: "inline-flex", gap: 6, color: COLORS.textMuted, fontSize: 13 }}>
+              <span>●</span><span>●</span><span>●</span>
+              <span style={{ marginLeft: 8 }}>Building your daily plan…</span>
+            </div>
+          </div>
+        )}
+
+        {state === "error" && (
+          <div style={{ background: COLORS.highDim, borderRadius: 10, padding: 16, color: COLORS.high, fontSize: 13 }}>
+            Something went wrong. <button onClick={generatePlan} style={{ background: "none", color: COLORS.accent, textDecoration: "underline", fontSize: 13 }}>Try again</button>
+          </div>
+        )}
+
+        {state === "done" && plan && (
+          <div className="ai-fade-in">
+            {plan.greeting && (
+              <div style={{ background: COLORS.accentDim, borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 14, color: COLORS.accent, fontWeight: 500, fontStyle: "italic" }}>
+                "{plan.greeting}"
+              </div>
+            )}
+
+            <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>Suggested Order</div>
+
+            {(plan.plan || []).map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 14, padding: "12px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: i === 0 ? COLORS.accent : COLORS.surface3, color: i === 0 ? "#fff" : COLORS.textMuted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>{i+1}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{item.taskTitle}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>{item.reason}</div>
+                  {item.tip && <div style={{ fontSize: 11, color: COLORS.accent, marginTop: 4, background: COLORS.accentDim, borderRadius: 5, padding: "3px 8px", display: "inline-block" }}>💡 {item.tip}</div>}
+                </div>
+              </div>
+            ))}
+
+            {plan.insight && (
+              <div style={{ marginTop: 16, background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`, borderRadius: 10, padding: "12px 14px", fontSize: 13, color: COLORS.frogDark, lineHeight: 1.6 }}>
+                <strong>Today's insight:</strong> {plan.insight}
+              </div>
+            )}
+
+            {activeTasks.length === 0 && (
+              <div style={{ textAlign: "center", color: COLORS.textMuted, fontSize: 14, padding: 20 }}>No active tasks to plan!</div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── AI Journal Modal ───────────────────────────────────────────────────────────
+function AIJournalModal({ user, tasks, workHours, onSaveWorkHours, onClose }) {
+  const [step, setStep] = useState("journal"); // journal | response | workhours
+  const [entry, setEntry] = useState("");
+  const [state, setState] = useState("idle");
+  const [reflection, setReflection] = useState(null);
+  const [wStart, setWStart] = useState(workHours?.start || "09:00");
+  const [wEnd, setWEnd] = useState(workHours?.end || "17:30");
+
+  const completedToday = tasks.filter(t => t.completedAt && t.completedAt.startsWith(today()));
+  const firstName = user?.firstName || "there";
+
+  async function submitJournal() {
+    if (!entry.trim()) return;
+    setState("loading");
+    const doneList = completedToday.map(t => `- ${t.title}${t.happiness ? ` (rated ${t.happiness}/5 stars)` : ""}`).join("\n") || "None";
+
+    const prompt = `You are a warm, thoughtful end-of-day journal companion for ${firstName}.
+
+Today (${today()}):
+- Tasks completed: 
+${doneList}
+- Work hours: ${workHours?.start || "09:00"} to ${workHours?.end || "17:30"}
+
+${firstName}'s journal entry:
+"${entry}"
+
+Respond with a warm, personal reflection. Acknowledge what they shared, celebrate any wins, offer gentle perspective on challenges, and leave them with one encouraging thought for tomorrow. Keep it conversational, genuine and under 150 words. Do NOT use bullet points or headers — just flowing, warm prose.`;
+
+    try {
+      const response = await fetch("/.netlify/functions/claude", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await response.json();
+      setReflection(data.text || "");
+      setState("done");
+      setStep("response");
+    } catch(e) { setState("error"); }
+  }
+
+  const isEndOfDay = () => {
+    if (!workHours) return true;
+    const now = new Date();
+    const [eh, em] = workHours.end.split(":").map(Number);
+    return now.getHours() > eh || (now.getHours() === eh && now.getMinutes() >= em);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 520, maxHeight: "90vh", overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
+
+        {step === "workhours" ? (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>Work Hours</h2>
+              <button onClick={() => setStep("journal")} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>← Back</button>
+            </div>
+            <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 20, lineHeight: 1.6 }}>Set your working hours so the end-of-day journal prompt appears at the right time.</p>
+            <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>START TIME</label>
+                <input type="time" value={wStart} onChange={e => setWStart(e.target.value)} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>END TIME</label>
+                <input type="time" value={wEnd} onChange={e => setWEnd(e.target.value)} />
+              </div>
+            </div>
+            <button onClick={() => { onSaveWorkHours({ start: wStart, end: wEnd }); setStep("journal"); }}
+              style={{ width: "100%", background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 600 }}>
+              Save Work Hours
+            </button>
+          </div>
+        ) : step === "journal" ? (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>📝 End of Day Journal</h2>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setStep("workhours")} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "6px 10px", fontSize: 12, border: `1px solid ${COLORS.border}` }}>⏰ Hours</button>
+                <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>✕</button>
+              </div>
+            </div>
+            <p style={{ fontSize: 13, color: COLORS.textMuted, marginBottom: 16 }}>
+              {workHours ? `Work hours: ${workHours.start} – ${workHours.end}` : "No work hours set"}
+            </p>
+
+            {completedToday.length > 0 && (
+              <div style={{ background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`, borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.frogDark, marginBottom: 6 }}>TODAY'S WINS ({completedToday.length} tasks)</div>
+                {completedToday.map(t => (
+                  <div key={t.id} style={{ fontSize: 12, color: COLORS.frogDark, padding: "2px 0" }}>✓ {t.title}{t.happiness ? ` ${"⭐".repeat(t.happiness)}` : ""}</div>
+                ))}
+              </div>
+            )}
+
+            <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 8 }}>HOW DID TODAY GO?</label>
+            <textarea value={entry} onChange={e => setEntry(e.target.value)}
+              placeholder={`Hey ${firstName}, how was your day? What went well, what was tough, anything on your mind?`}
+              style={{ minHeight: 120, marginBottom: 12 }} />
+
+            {state === "error" && <div style={{ background: COLORS.highDim, color: COLORS.high, borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 12 }}>Something went wrong. Try again.</div>}
+
+            <button onClick={submitJournal} disabled={!entry.trim() || state === "loading"}
+              style={{ width: "100%", background: entry.trim() ? COLORS.accent : COLORS.surface3, color: entry.trim() ? "#fff" : COLORS.textMuted, borderRadius: 8, padding: "12px", fontSize: 14, fontWeight: 600 }}>
+              {state === "loading" ? "Getting your reflection…" : "Get AI Reflection ✨"}
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>✨ Your Reflection</h2>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setStep("journal")} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600 }}>← Edit</button>
+                <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>✕</button>
+              </div>
+            </div>
+
+            <div style={{ background: COLORS.accentDim, border: `1px solid ${COLORS.accent}30`, borderRadius: 10, padding: "14px 16px", marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>YOUR ENTRY</div>
+              <div style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6, fontStyle: "italic" }}>"{entry}"</div>
+            </div>
+
+            <div style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "14px 16px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, marginBottom: 8 }}>AI REFLECTION</div>
+              <div style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.8 }}>{reflection}</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Correlation Analysis ───────────────────────────────────────────────────────
+function CorrelationAnalysis({ tasks, checkins }) {
+  if (checkins.length < 5) {
+    return (
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 24, textAlign: "center" }}>
+        <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Not enough data yet</div>
+        <div style={{ fontSize: 13, color: COLORS.textMuted, lineHeight: 1.6 }}>Complete at least 5 daily check-ins to unlock correlation insights. You have {checkins.length} so far.</div>
+      </div>
+    );
+  }
+
+  const metrics = ["mood", "energy", "sleep", "stress", "happiness"];
+  const metricLabels = { mood: "Mood 😊", energy: "Energy ⚡", sleep: "Sleep 😴", stress: "Stress 😤", happiness: "Happiness 😄" };
+
+  // For each checkin day, count tasks completed
+  const enriched = checkins.map(c => {
+    const completed = tasks.filter(t => t.completedAt && t.completedAt.startsWith(c.date)).length;
+    return { ...c, completed };
+  });
+
+  // Simple correlation: for each metric, group days into low (1-2), mid (3), high (4-5) and average tasks completed
+  function correlate(metric) {
+    const low = enriched.filter(c => c[metric] <= 2);
+    const mid = enriched.filter(c => c[metric] === 3);
+    const high = enriched.filter(c => c[metric] >= 4);
+    const avg = arr => arr.length ? (arr.reduce((a, c) => a + c.completed, 0) / arr.length).toFixed(1) : null;
+    return { low: avg(low), mid: avg(mid), high: avg(high), lowN: low.length, highN: high.length };
+  }
+
+  function insight(metric, data) {
+    if (!data.low || !data.high || data.lowN < 2 || data.highN < 2) return null;
+    const diff = (parseFloat(data.high) - parseFloat(data.low)).toFixed(1);
+    const isStress = metric === "stress";
+    if (Math.abs(diff) < 0.3) return `${metricLabels[metric]} doesn't strongly affect your output.`;
+    if (!isStress) {
+      return diff > 0
+        ? `Higher ${metric} days → ${diff} more tasks completed on average.`
+        : `Higher ${metric} doesn't improve output — quality may matter more than quantity.`;
+    } else {
+      return diff > 0
+        ? `Surprisingly, higher stress days see ${diff} more tasks — you may work well under pressure.`
+        : `Lower stress days → ${Math.abs(diff)} more tasks — calmer days are more productive for you.`;
+    }
+  }
+
+  const maxBar = Math.max(...enriched.map(c => c.completed), 1);
+
+  return (
+    <div style={{ paddingBottom: 20 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 16 }}>
+        Wellbeing × Productivity Correlations
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {metrics.map(metric => {
+          const data = correlate(metric);
+          const ins = insight(metric, data);
+          const isStress = metric === "stress";
+          return (
+            <div key={metric} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>{metricLabels[metric]}</div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                {[
+                  { label: "Low (1-2)", val: data.low, n: data.lowN },
+                  { label: "Mid (3)", val: data.mid, n: data.midN },
+                  { label: "High (4-5)", val: data.high, n: data.highN },
+                ].map(({ label, val, n }) => (
+                  <div key={label} style={{ flex: 1, textAlign: "center" }}>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted, marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: val ? COLORS.accent : COLORS.textMuted }}>{val || "—"}</div>
+                    <div style={{ fontSize: 10, color: COLORS.textMuted }}>tasks avg</div>
+                  </div>
+                ))}
+              </div>
+              {ins && (
+                <div style={{ fontSize: 12, color: COLORS.textDim, background: COLORS.surface2, borderRadius: 7, padding: "6px 10px", lineHeight: 1.5 }}>
+                  💡 {ins}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 
@@ -1243,6 +1860,8 @@ function App() {
   const [tasks, setTasks] = useState(() => { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : SAMPLE_TASKS; } catch { return SAMPLE_TASKS; } });
   const [checkins, setCheckins] = useState(() => { try { const s = localStorage.getItem(WELLBEING_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [user, setUser] = useState(() => { try { const s = localStorage.getItem(USER_KEY); return s ? JSON.parse(s) : null; } catch { return null; } });
+  const [projects, setProjects] = useState(() => { try { const s = localStorage.getItem(PROJECTS_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
+  const [workHours, setWorkHours] = useState(() => { try { const s = localStorage.getItem(WORKHOURS_KEY); return s ? JSON.parse(s) : { start: "09:00", end: "17:30" }; } catch { return { start: "09:00", end: "17:30" }; } });
   const [history, setHistory] = useState([]);
   const [future, setFuture] = useState([]);
   const [view, setView] = useState("board");
@@ -1253,6 +1872,10 @@ function App() {
   const [showCheckin, setShowCheckin] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showFocus, setShowFocus] = useState(false);
+  const [showDailyPlan, setShowDailyPlan] = useState(false);
+  const [showJournal, setShowJournal] = useState(false);
+  const [showProjectManager, setShowProjectManager] = useState(false);
+  const [projectFilter, setProjectFilter] = useState(null);
   const [happinessTask, setHappinessTask] = useState(null);
   const [confetti, setConfetti] = useState(false);
   const [dragging, setDragging] = useState(null);
@@ -1267,8 +1890,28 @@ function App() {
     }
   }, []);
 
+  // Auto show end-of-day journal prompt
+  useEffect(() => {
+    const lastJournal = localStorage.getItem("vtm_journal_shown");
+    if (lastJournal === today()) return;
+    function checkTime() {
+      if (!workHours) return;
+      const now = new Date();
+      const [eh, em] = workHours.end.split(":").map(Number);
+      if (now.getHours() > eh || (now.getHours() === eh && now.getMinutes() >= em)) {
+        setShowJournal(true);
+        localStorage.setItem("vtm_journal_shown", today());
+      }
+    }
+    checkTime();
+    const interval = setInterval(checkTime, 60000);
+    return () => clearInterval(interval);
+  }, [workHours]);
+
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }, [tasks]);
   useEffect(() => { localStorage.setItem(WELLBEING_KEY, JSON.stringify(checkins)); }, [checkins]);
+  useEffect(() => { localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)); }, [projects]);
+  useEffect(() => { localStorage.setItem(WORKHOURS_KEY, JSON.stringify(workHours)); }, [workHours]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1297,7 +1940,6 @@ function App() {
   }
 
   function deleteTask(id) { updateTasks(ts => ts.filter(t => t.id !== id)); }
-
   function toggleFrog(id) { updateTasks(ts => ts.map(t => ({ ...t, isFrog: t.id === id ? !t.isFrog : (t.id !== id && t.isFrog ? false : t.isFrog) }))); }
 
   function setStatus(id, status) {
@@ -1315,6 +1957,21 @@ function App() {
   function saveHappiness(taskId, rating) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, happiness: rating } : t)); }
   function saveUser(userData) { setUser(userData); localStorage.setItem(USER_KEY, JSON.stringify(userData)); }
   function saveCheckin(entry) { setCheckins(prev => { const filtered = prev.filter(c => c.date !== entry.date); return [...filtered, entry]; }); }
+  function saveWorkHours(wh) { setWorkHours(wh); }
+  function updateTimeSpent(taskId, seconds) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, timeSpent: seconds } : t)); }
+
+  function saveProject(project) {
+    setProjects(prev => {
+      const idx = prev.findIndex(p => p.id === project.id);
+      if (idx >= 0) { const n = [...prev]; n[idx] = project; return n; }
+      return [...prev, project];
+    });
+  }
+  function deleteProject(id) {
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setTasks(ts => ts.map(t => t.projectId === id ? { ...t, projectId: null } : t));
+    if (projectFilter === id) setProjectFilter(null);
+  }
 
   function handleDrop(targetId, targetStatus) {
     if (!dragging) return;
@@ -1332,6 +1989,7 @@ function App() {
   }
 
   const frogTask = tasks.find(t => t.isFrog);
+  const filteredTasks = projectFilter ? tasks.filter(t => t.projectId === projectFilter) : tasks;
   const colDotColor = { "To Do": COLORS.textMuted, "In Progress": COLORS.medium, "Done": COLORS.frog };
   const views = [["board","Board"],["calendar","Calendar"],["wellbeing","Wellbeing"],["analytics","Analytics"]];
 
@@ -1362,15 +2020,40 @@ function App() {
           </div>
 
           <button onClick={() => setShowSearch(true)} title="Search (Ctrl+K)" style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>🔍</button>
-          {frogTask && <button onClick={() => setShowFocus(true)} title="Focus mode" style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.accent}30`, fontWeight: 600 }}>🎯 Focus</button>}
-          <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
-          <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>IO</button>
+          {frogTask && <button onClick={() => setShowFocus(true)} title="Focus mode" style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.accent}30`, fontWeight: 600 }}>🎯</button>}
+          <button onClick={() => setShowDailyPlan(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>🤖 Plan</button>
+          <button onClick={() => setShowJournal(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>📝</button>
+          <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
+          <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 10px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>IO</button>
           <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 600 }}>+ New</button>
         </div>
       </div>
 
       <div className="page-pad">
         {user && view === "board" && <GreetingBanner user={user} tasks={tasks} />}
+
+        {/* Project filter bar */}
+        {view === "board" && projects.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14, alignItems: "center" }}>
+            <button onClick={() => setProjectFilter(null)} style={{ background: !projectFilter ? COLORS.accent : COLORS.surface3, color: !projectFilter ? "#fff" : COLORS.textMuted, borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 600, border: `1px solid ${!projectFilter ? COLORS.accent : COLORS.border}` }}>All</button>
+            {projects.map(p => {
+              const c = getProjectColor(p.colorId);
+              const active = projectFilter === p.id;
+              return (
+                <button key={p.id} onClick={() => setProjectFilter(active ? null : p.id)}
+                  style={{ background: active ? c.text : c.bg, color: active ? "#fff" : c.text, borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 600, border: `1px solid ${c.border}` }}>
+                  {p.name}
+                </button>
+              );
+            })}
+            <button onClick={() => setShowProjectManager(true)} style={{ background: "none", color: COLORS.textMuted, borderRadius: 20, padding: "4px 10px", fontSize: 12, border: `1px dashed ${COLORS.border}` }}>+ Manage</button>
+          </div>
+        )}
+        {view === "board" && projects.length === 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <button onClick={() => setShowProjectManager(true)} style={{ background: "none", color: COLORS.textMuted, borderRadius: 20, padding: "4px 12px", fontSize: 12, border: `1px dashed ${COLORS.border}` }}>+ Add project</button>
+          </div>
+        )}
 
         {frogTask && view === "board" && (
           <div style={{ background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`, borderRadius: 10, padding: "12px 18px", display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
@@ -1379,7 +2062,7 @@ function App() {
               <div style={{ fontSize: 11, color: COLORS.frog, fontWeight: 700, letterSpacing: 0.6, marginBottom: 2, textTransform: "uppercase" }}>Eat the Frog — Do this first</div>
               <div style={{ fontWeight: 600, fontSize: 15 }}>{frogTask.title}</div>
             </div>
-            {frogTask.aiBreakdown?.steps?.length > 0 && <div style={{ fontSize: 11, color: COLORS.frogDark, fontWeight: 600, background: COLORS.surface, borderRadius: 6, padding: "3px 10px", border: `1px solid ${COLORS.frogBorder}` }}>✨ {frogTask.aiBreakdown.steps.length} steps ready</div>}
+            {frogTask.aiBreakdown?.steps?.length > 0 && <div style={{ fontSize: 11, color: COLORS.frogDark, fontWeight: 600, background: COLORS.surface, borderRadius: 6, padding: "3px 10px", border: `1px solid ${COLORS.frogBorder}` }}>✨ {frogTask.aiBreakdown.steps.length} steps</div>}
             <span style={{ background: COLORS.surface, color: COLORS.textMuted, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>{frogTask.status}</span>
           </div>
         )}
@@ -1387,7 +2070,7 @@ function App() {
         {view === "board" && (
           <div className="board-grid">
             {STATUS_COLS.map(col => {
-              const colTasks = tasks.filter(t => t.status === col);
+              const colTasks = filteredTasks.filter(t => t.status === col);
               return (
                 <div key={col}
                   onDragOver={e => { e.preventDefault(); setDragOver(col); }}
@@ -1399,7 +2082,7 @@ function App() {
                     <span style={{ background: COLORS.surface3, color: COLORS.textMuted, fontSize: 11, padding: "1px 7px", borderRadius: 10, border: `1px solid ${COLORS.border}`, fontWeight: 500 }}>{colTasks.length}</span>
                   </div>
                   {colTasks.map(t => (
-                    <TaskCard key={t.id} task={t} onEdit={setEditingTask} onDelete={deleteTask} onFrog={toggleFrog} onStatusChange={setStatus} onSaveBreakdown={saveBreakdown}
+                    <TaskCard key={t.id} task={t} projects={projects} onEdit={setEditingTask} onDelete={deleteTask} onFrog={toggleFrog} onStatusChange={setStatus} onSaveBreakdown={saveBreakdown} onTimeUpdate={updateTimeSpent}
                       isDragging={dragging===t.id} onDragStart={() => setDragging(t.id)}
                       onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
                       onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }} />
@@ -1418,11 +2101,14 @@ function App() {
 
       {!user && <OnboardingModal onComplete={saveUser} />}
       {showSearch && <SearchBar tasks={tasks} onSelect={t => setEditingTask(t)} onClose={() => setShowSearch(false)} />}
-      {(showNew || editingTask) && <TaskModal task={editingTask} onSave={saveTask} onClose={() => { setShowNew(false); setEditingTask(null); }} />}
+      {(showNew || editingTask) && <TaskModal task={editingTask} projects={projects} onSave={saveTask} onClose={() => { setShowNew(false); setEditingTask(null); }} />}
       {showDaily && <DailySummaryModal tasks={tasks} checkins={checkins} onClose={() => setShowDaily(false)} onOpenCheckin={() => { setShowDaily(false); setShowCheckin(true); }} />}
       {showIE && <ImportExportModal tasks={tasks} onImport={data => setTasks(data)} onClose={() => setShowIE(false)} />}
       {showCheckin && <WellbeingCheckinModal existing={checkins.find(c => c.date === today())} onSave={saveCheckin} onClose={() => setShowCheckin(false)} />}
       {happinessTask && <HappinessModal task={happinessTask} onRate={saveHappiness} onClose={() => setHappinessTask(null)} />}
+      {showDailyPlan && <AIDailyPlanModal tasks={tasks} checkins={checkins} onClose={() => setShowDailyPlan(false)} />}
+      {showJournal && <AIJournalModal user={user} tasks={tasks} workHours={workHours} onSaveWorkHours={saveWorkHours} onClose={() => setShowJournal(false)} />}
+      {showProjectManager && <ProjectManagerModal projects={projects} onSave={saveProject} onDelete={deleteProject} onClose={() => setShowProjectManager(false)} />}
     </div>
   );
 }
