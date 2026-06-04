@@ -574,6 +574,9 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
 function TaskModal({ task, onSave, onClose }) {
   const [form, setForm] = useState(task || { title: "", description: "", priority: "Medium", status: "To Do", due: "", subtasks: [], isFrog: false, createdAt: new Date().toISOString(), completedAt: null, aiBreakdown: null, happiness: null });
   const [newSub, setNewSub] = useState("");
+  const [dueSuggesting, setDueSuggesting] = useState(false);
+  const [dueSuggestion, setDueSuggestion] = useState(null);
+
   function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
   function addSub() { if (!newSub.trim()) return; setF("subtasks", [...form.subtasks, { id: generateId(), title: newSub.trim(), done: false }]); setNewSub(""); }
   function handleSave() {
@@ -582,6 +585,16 @@ function TaskModal({ task, onSave, onClose }) {
     const nowDone = form.status === "Done";
     onSave({ ...form, id: form.id || generateId(), completedAt: (wasNotDone && nowDone) ? new Date().toISOString() : form.completedAt });
   }
+
+  async function handleSuggestDue() {
+    if (!form.title.trim()) return;
+    setDueSuggesting(true);
+    setDueSuggestion(null);
+    const result = await suggestDueDate(form.title, form.description, form.priority);
+    setDueSuggesting(false);
+    if (result) setDueSuggestion(result);
+  }
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "90vh", overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
@@ -595,7 +608,24 @@ function TaskModal({ task, onSave, onClose }) {
           <div className="form-grid-3">
             <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>PRIORITY</label><select value={form.priority} onChange={e => setF("priority", e.target.value)}>{Object.keys(PRIORITY_CONFIG).map(p => <option key={p}>{p}</option>)}</select></div>
             <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>STATUS</label><select value={form.status} onChange={e => setF("status", e.target.value)}>{STATUS_COLS.map(s => <option key={s}>{s}</option>)}</select></div>
-            <div><label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>DUE DATE</label><input type="date" value={form.due} onChange={e => setF("due", e.target.value)} /></div>
+            <div>
+              <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 6 }}>DUE DATE</label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <input type="date" value={form.due} onChange={e => setF("due", e.target.value)} style={{ flex: 1 }} />
+                <button onClick={handleSuggestDue} disabled={dueSuggesting || !form.title.trim()} title="AI suggest due date"
+                  style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 7, padding: "0 10px", fontSize: 14, flexShrink: 0, opacity: !form.title.trim() ? 0.4 : 1, border: `1px solid ${COLORS.accent}30` }}>
+                  {dueSuggesting ? "…" : "✨"}
+                </button>
+              </div>
+              {dueSuggestion && (
+                <div style={{ marginTop: 6, background: COLORS.accentDim, borderRadius: 8, padding: "8px 10px", border: `1px solid ${COLORS.accent}30` }}>
+                  <div style={{ fontSize: 11, color: COLORS.accent, fontWeight: 600, marginBottom: 3 }}>AI suggests: {dueSuggestion.date}</div>
+                  <div style={{ fontSize: 11, color: COLORS.textDim, marginBottom: 6 }}>{dueSuggestion.reason}</div>
+                  <button onClick={() => { setF("due", dueSuggestion.date); setDueSuggestion(null); }}
+                    style={{ background: COLORS.accent, color: "#fff", borderRadius: 5, padding: "4px 10px", fontSize: 11, fontWeight: 600 }}>Use this date</button>
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, display: "block", marginBottom: 10 }}>SUBTASKS</label>
@@ -816,6 +846,313 @@ function ImportExportModal({ tasks, onImport, onClose }) {
 }
 
 
+
+// ── Confetti ───────────────────────────────────────────────────────────────────
+function Confetti({ onDone }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height,
+      w: Math.random() * 10 + 6,
+      h: Math.random() * 6 + 4,
+      color: ["#4f46e5","#16a34a","#f59e0b","#ef4444","#3b82f6","#ec4899","#22c55e"][Math.floor(Math.random()*7)],
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 6,
+      vy: Math.random() * 3 + 2,
+      vx: (Math.random() - 0.5) * 2,
+    }));
+    let frame;
+    let done = false;
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      pieces.forEach(p => {
+        p.y += p.vy; p.x += p.vx; p.rot += p.rotSpeed;
+        ctx.save();
+        ctx.translate(p.x + p.w/2, p.y + p.h/2);
+        ctx.rotate(p.rot * Math.PI / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+      });
+      if (!done && pieces.every(p => p.y > canvas.height)) { done = true; onDone(); return; }
+      frame = requestAnimationFrame(draw);
+    }
+    draw();
+    const t = setTimeout(() => { done = true; onDone(); }, 4000);
+    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+  }, []);
+  return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none" }} />;
+}
+
+// ── SearchBar ──────────────────────────────────────────────────────────────────
+function SearchBar({ tasks, onSelect, onClose }) {
+  const [q, setQ] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const results = q.trim().length < 2 ? [] : tasks.filter(t => {
+    const lq = q.toLowerCase();
+    return t.title.toLowerCase().includes(lq) ||
+      (t.description || "").toLowerCase().includes(lq) ||
+      t.subtasks.some(s => s.title.toLowerCase().includes(lq));
+  }).slice(0, 8);
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "80px 20px 20px" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
+          <span style={{ fontSize: 18, color: COLORS.textMuted }}>🔍</span>
+          <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)}
+            placeholder="Search tasks, descriptions, subtasks…"
+            style={{ border: "none", background: "none", fontSize: 15, flex: 1, outline: "none", boxShadow: "none", padding: 0 }}
+            onKeyDown={e => e.key === "Escape" && onClose()} />
+          <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 6, padding: "4px 10px", fontSize: 12, border: `1px solid ${COLORS.border}` }}>Esc</button>
+        </div>
+        {results.length > 0 && (
+          <div style={{ maxHeight: 400, overflow: "auto" }}>
+            {results.map(t => {
+              const lq = q.toLowerCase();
+              const matchedSub = t.subtasks.find(s => s.title.toLowerCase().includes(lq));
+              return (
+                <div key={t.id} onClick={() => { onSelect(t); onClose(); }}
+                  style={{ padding: "12px 16px", borderBottom: `1px solid ${COLORS.border}`, cursor: "pointer", transition: "background 0.1s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = COLORS.surface2}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: PRIORITY_CONFIG[t.priority].dim, color: PRIORITY_CONFIG[t.priority].color }}>{t.priority.toUpperCase()}</span>
+                    <span style={{ fontSize: 10, color: COLORS.textMuted, background: COLORS.surface3, borderRadius: 4, padding: "2px 6px" }}>{t.status}</span>
+                    {t.isFrog && <span style={{ fontSize: 10 }}>🐸</span>}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.text }}>{t.title}</div>
+                  {t.description && <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 2 }}>{t.description.slice(0, 80)}{t.description.length > 80 ? "…" : ""}</div>}
+                  {matchedSub && <div style={{ fontSize: 11, color: COLORS.accent, marginTop: 4 }}>↳ subtask: {matchedSub.title}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {q.trim().length >= 2 && results.length === 0 && (
+          <div style={{ padding: 24, textAlign: "center", color: COLORS.textMuted, fontSize: 14 }}>No tasks found for "{q}"</div>
+        )}
+        {q.trim().length < 2 && (
+          <div style={{ padding: "16px", color: COLORS.textMuted, fontSize: 13, textAlign: "center" }}>Type at least 2 characters to search</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Calendar View ──────────────────────────────────────────────────────────────
+function CalendarView({ tasks, onEdit }) {
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const weekStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay() + 1 + weekOffset * 7);
+    d.setHours(0,0,0,0);
+    return d;
+  })();
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+
+  const todayStr = today();
+
+  function dateStr(d) { return d.toISOString().split("T")[0]; }
+
+  const unscheduled = tasks.filter(t => !t.due && t.status !== "Done");
+
+  return (
+    <div style={{ paddingBottom: 40 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Calendar</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setWeekOffset(0)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, border: `1px solid ${COLORS.accent}30` }}>Today</button>
+          <button onClick={() => setWeekOffset(w => w-1)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>←</button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, minWidth: 160, textAlign: "center" }}>
+            {weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – {days[6].toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+          </span>
+          <button onClick={() => setWeekOffset(w => w+1)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>→</button>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginBottom: 24 }}>
+        {days.map(day => {
+          const ds = dateStr(day);
+          const isToday = ds === todayStr;
+          const dayTasks = tasks.filter(t => t.due === ds);
+          return (
+            <div key={ds} style={{ background: isToday ? COLORS.accentDim : COLORS.surface, border: `1px solid ${isToday ? COLORS.accent+"60" : COLORS.border}`, borderRadius: 10, padding: "10px 8px", minHeight: 120 }}>
+              <div style={{ marginBottom: 8, textAlign: "center" }}>
+                <div style={{ fontSize: 10, color: isToday ? COLORS.accent : COLORS.textMuted, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                  {day.toLocaleDateString("en-GB", { weekday: "short" })}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: isToday ? COLORS.accent : COLORS.text, lineHeight: 1.2 }}>
+                  {day.getDate()}
+                </div>
+              </div>
+              {dayTasks.map(t => (
+                <div key={t.id} onClick={() => onEdit(t)}
+                  style={{ background: t.isFrog ? COLORS.frogDim : PRIORITY_CONFIG[t.priority].dim, border: `1px solid ${t.isFrog ? COLORS.frogBorder : PRIORITY_CONFIG[t.priority].color+"40"}`, borderRadius: 5, padding: "4px 6px", marginBottom: 4, cursor: "pointer", fontSize: 11, fontWeight: 600, color: t.isFrog ? COLORS.frogDark : PRIORITY_CONFIG[t.priority].color, lineHeight: 1.3 }}>
+                  {t.isFrog ? "🐸 " : ""}{t.title.slice(0, 22)}{t.title.length > 22 ? "…" : ""}
+                  {t.status === "Done" && <span style={{ marginLeft: 4, opacity: 0.7 }}>✓</span>}
+                </div>
+              ))}
+              {dayTasks.length === 0 && (
+                <div style={{ fontSize: 10, color: COLORS.border, textAlign: "center", marginTop: 8 }}>—</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {unscheduled.length > 0 && (
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>
+            Unscheduled ({unscheduled.length})
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {unscheduled.map(t => (
+              <div key={t.id} onClick={() => onEdit(t)}
+                style={{ background: PRIORITY_CONFIG[t.priority].dim, border: `1px solid ${PRIORITY_CONFIG[t.priority].color}40`, borderRadius: 7, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: PRIORITY_CONFIG[t.priority].color }}>
+                {t.isFrog ? "🐸 " : ""}{t.title}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Focus Mode ─────────────────────────────────────────────────────────────────
+function FocusMode({ task, onClose }) {
+  const WORK_MINS = 25;
+  const BREAK_MINS = 5;
+  const [phase, setPhase] = useState("work"); // work | break
+  const [seconds, setSeconds] = useState(WORK_MINS * 60);
+  const [running, setRunning] = useState(false);
+  const [cycles, setCycles] = useState(0);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => {
+        setSeconds(s => {
+          if (s <= 1) {
+            clearInterval(intervalRef.current);
+            setRunning(false);
+            if (phase === "work") {
+              setCycles(c => c + 1);
+              setPhase("break");
+              setSeconds(BREAK_MINS * 60);
+            } else {
+              setPhase("work");
+              setSeconds(WORK_MINS * 60);
+            }
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [running, phase]);
+
+  function reset() { clearInterval(intervalRef.current); setRunning(false); setPhase("work"); setSeconds(WORK_MINS * 60); }
+  function toggle() { setRunning(r => !r); }
+
+  const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const secs = String(seconds % 60).padStart(2, "0");
+  const pct = phase === "work" ? ((WORK_MINS * 60 - seconds) / (WORK_MINS * 60)) * 100 : ((BREAK_MINS * 60 - seconds) / (BREAK_MINS * 60)) * 100;
+  const r = 80, circ = 2 * Math.PI * r;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#0f0f16", zIndex: 3000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <button onClick={onClose} style={{ position: "absolute", top: 24, right: 24, background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600 }}>✕ Exit Focus</button>
+
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>
+        {phase === "work" ? "🎯 Focus Session" : "☕ Break Time"} · {cycles} cycle{cycles !== 1 ? "s" : ""} complete
+      </div>
+
+      <div style={{ fontSize: 20, fontWeight: 700, color: "#fff", marginBottom: 40, textAlign: "center", maxWidth: 500, lineHeight: 1.4 }}>
+        {task.isFrog && <span style={{ marginRight: 8 }}>🐸</span>}{task.title}
+      </div>
+
+      <div style={{ position: "relative", marginBottom: 40 }}>
+        <svg width={200} height={200} viewBox="0 0 200 200">
+          <circle cx={100} cy={100} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={8} />
+          <circle cx={100} cy={100} r={r} fill="none"
+            stroke={phase === "work" ? COLORS.accent : COLORS.frog}
+            strokeWidth={8} strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={circ - (pct / 100) * circ}
+            transform="rotate(-90 100 100)"
+            style={{ transition: "stroke-dashoffset 1s linear" }} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ fontSize: 42, fontWeight: 800, color: "#fff", fontFamily: "monospace", letterSpacing: -1 }}>{mins}:{secs}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>{phase === "work" ? "work" : "break"}</div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 12 }}>
+        <button onClick={toggle} style={{ background: phase === "work" ? COLORS.accent : COLORS.frog, color: "#fff", borderRadius: 10, padding: "14px 36px", fontSize: 16, fontWeight: 700, minWidth: 140 }}>
+          {running ? "⏸ Pause" : seconds === (phase === "work" ? WORK_MINS : BREAK_MINS) * 60 ? "▶ Start" : "▶ Resume"}
+        </button>
+        <button onClick={reset} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, padding: "14px 20px", fontSize: 16 }}>↺</button>
+      </div>
+
+      {task.description && (
+        <div style={{ marginTop: 40, maxWidth: 480, textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>
+          {task.description}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Smart Due Date Suggestion ──────────────────────────────────────────────────
+async function suggestDueDate(title, description, priority) {
+  const prompt = `A user is creating a task and wants a suggested due date. Today is ${today()}.
+
+Task title: ${title}
+Description: ${description || "None"}
+Priority: ${priority}
+
+Based on the complexity implied by the title and description, and the priority level, suggest a realistic due date.
+
+Respond with ONLY a JSON object like this (no other text, no markdown):
+{"date": "YYYY-MM-DD", "reason": "one short sentence explaining why"}
+
+The date must be today or in the future. High priority = sooner. Consider realistic working time needed.`;
+
+  const response = await fetch("/.netlify/functions/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  const data = await response.json();
+  const text = (data.text || "").trim();
+  try {
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch(e) {
+    return null;
+  }
+}
+
+
 // ── Onboarding Modal ───────────────────────────────────────────────────────────
 function OnboardingModal({ onComplete }) {
   const [firstName, setFirstName] = React.useState("");
@@ -914,7 +1251,10 @@ function App() {
   const [showDaily, setShowDaily] = useState(false);
   const [showIE, setShowIE] = useState(false);
   const [showCheckin, setShowCheckin] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showFocus, setShowFocus] = useState(false);
   const [happinessTask, setHappinessTask] = useState(null);
+  const [confetti, setConfetti] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
 
@@ -930,11 +1270,13 @@ function App() {
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks)); }, [tasks]);
   useEffect(() => { localStorage.setItem(WELLBEING_KEY, JSON.stringify(checkins)); }, [checkins]);
 
-  // Undo/redo keyboard shortcuts
+  // Keyboard shortcuts
   useEffect(() => {
     function handleKey(e) {
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); setShowSearch(true); }
+      if (e.key === "Escape") { setShowSearch(false); setShowFocus(false); }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -943,7 +1285,6 @@ function App() {
   function pushHistory(prev) { setHistory(h => [...h.slice(-49), prev]); setFuture([]); }
   function undo() { if (!history.length) return; const prev = history[history.length-1]; setFuture(f => [tasks, ...f]); setTasks(prev); setHistory(h => h.slice(0,-1)); }
   function redo() { if (!future.length) return; const next = future[0]; setHistory(h => [...h, tasks]); setTasks(next); setFuture(f => f.slice(1)); }
-
   function updateTasks(fn) { pushHistory(tasks); setTasks(fn); }
 
   function saveTask(task) {
@@ -962,22 +1303,18 @@ function App() {
   function setStatus(id, status) {
     const task = tasks.find(t => t.id === id);
     const becomingDone = status === "Done" && task?.status !== "Done";
+    const wasFrog = task?.isFrog;
     updateTasks(ts => ts.map(t => t.id === id ? { ...t, status, completedAt: status === "Done" && !t.completedAt ? new Date().toISOString() : t.completedAt } : t));
-    if (becomingDone && task) { setTimeout(() => setHappinessTask(task), 300); }
+    if (becomingDone) {
+      if (wasFrog) setTimeout(() => setConfetti(true), 200);
+      if (task) setTimeout(() => setHappinessTask(task), wasFrog ? 2000 : 300);
+    }
   }
 
   function saveBreakdown(taskId, breakdown) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, aiBreakdown: breakdown } : t)); }
-
   function saveHappiness(taskId, rating) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, happiness: rating } : t)); }
-
-  function saveUser(userData) {
-    setUser(userData);
-    localStorage.setItem(USER_KEY, JSON.stringify(userData));
-  }
-
-  function saveCheckin(entry) {
-    setCheckins(prev => { const filtered = prev.filter(c => c.date !== entry.date); return [...filtered, entry]; });
-  }
+  function saveUser(userData) { setUser(userData); localStorage.setItem(USER_KEY, JSON.stringify(userData)); }
+  function saveCheckin(entry) { setCheckins(prev => { const filtered = prev.filter(c => c.date !== entry.date); return [...filtered, entry]; }); }
 
   function handleDrop(targetId, targetStatus) {
     if (!dragging) return;
@@ -996,43 +1333,45 @@ function App() {
 
   const frogTask = tasks.find(t => t.isFrog);
   const colDotColor = { "To Do": COLORS.textMuted, "In Progress": COLORS.medium, "Done": COLORS.frog };
+  const views = [["board","Board"],["calendar","Calendar"],["wellbeing","Wellbeing"],["analytics","Analytics"]];
 
   return (
     <div style={{ minHeight: "100vh", background: COLORS.bg }}>
       <style>{css}</style>
 
+      {confetti && <Confetti onDone={() => setConfetti(false)} />}
+      {showFocus && frogTask && <FocusMode task={frogTask} onClose={() => setShowFocus(false)} />}
+
       {/* Header */}
       <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: "0 16px", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
         <div className="header-inner">
           <div style={{ flex: 1, minWidth: 80 }}>
-          <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3, lineHeight: 1.1 }}>Lawless OS</div>
-          <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 500, letterSpacing: 0.5 }}>LAWLESS OPERATING SYSTEM</div>
-        </div>
+            <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3, lineHeight: 1.1 }}>Lawless OS</div>
+            <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 500, letterSpacing: 0.5 }}>LAWLESS OPERATING SYSTEM</div>
+          </div>
 
-          {/* Undo / Redo */}
           <div style={{ display: "flex", gap: 2 }}>
             <button onClick={undo} disabled={!history.length} title="Undo (Ctrl+Z)" style={{ background: COLORS.surface3, color: history.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: history.length ? 1 : 0.4 }}>↩</button>
             <button onClick={redo} disabled={!future.length} title="Redo (Ctrl+Y)" style={{ background: COLORS.surface3, color: future.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: future.length ? 1 : 0.4 }}>↪</button>
           </div>
 
-          {/* View toggle */}
           <div className="view-toggle">
-            {[["board","Board"],["wellbeing","Wellbeing"],["analytics","Analytics"]].map(([v, label]) => (
-              <button key={v} onClick={() => setView(v)} style={{ background: view===v ? COLORS.surface : "transparent", color: view===v ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 14px", fontSize: 13, fontWeight: 500, boxShadow: view===v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
+            {views.map(([v, label]) => (
+              <button key={v} onClick={() => setView(v)} style={{ background: view===v ? COLORS.surface : "transparent", color: view===v ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 500, boxShadow: view===v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
             ))}
           </div>
 
+          <button onClick={() => setShowSearch(true)} title="Search (Ctrl+K)" style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>🔍</button>
+          {frogTask && <button onClick={() => setShowFocus(true)} title="Focus mode" style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.accent}30`, fontWeight: 600 }}>🎯 Focus</button>}
           <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
-          <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Import / Export</button>
-          <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 600 }}>+ New Task</button>
+          <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>IO</button>
+          <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 600 }}>+ New</button>
         </div>
       </div>
 
       <div className="page-pad">
-        {/* Greeting Banner */}
         {user && view === "board" && <GreetingBanner user={user} tasks={tasks} />}
 
-        {/* Frog Banner */}
         {frogTask && view === "board" && (
           <div style={{ background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`, borderRadius: 10, padding: "12px 18px", display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 22 }}>🐸</span>
@@ -1045,7 +1384,6 @@ function App() {
           </div>
         )}
 
-        {/* Board */}
         {view === "board" && (
           <div className="board-grid">
             {STATUS_COLS.map(col => {
@@ -1073,14 +1411,13 @@ function App() {
           </div>
         )}
 
+        {view === "calendar" && <CalendarView tasks={tasks} onEdit={setEditingTask} />}
         {view === "wellbeing" && <WellbeingView checkins={checkins} tasks={tasks} onOpenCheckin={() => setShowCheckin(true)} />}
         {view === "analytics" && <AnalyticsView tasks={tasks} />}
       </div>
 
-      {/* Onboarding */}
       {!user && <OnboardingModal onComplete={saveUser} />}
-
-      {/* Modals */}
+      {showSearch && <SearchBar tasks={tasks} onSelect={t => setEditingTask(t)} onClose={() => setShowSearch(false)} />}
       {(showNew || editingTask) && <TaskModal task={editingTask} onSave={saveTask} onClose={() => { setShowNew(false); setEditingTask(null); }} />}
       {showDaily && <DailySummaryModal tasks={tasks} checkins={checkins} onClose={() => setShowDaily(false)} onOpenCheckin={() => { setShowDaily(false); setShowCheckin(true); }} />}
       {showIE && <ImportExportModal tasks={tasks} onImport={data => setTasks(data)} onClose={() => setShowIE(false)} />}
