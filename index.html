@@ -81,6 +81,7 @@ const css = `
   .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 12px; height: 58px; }
   .view-toggle { display: flex; gap: 2px; background: ${COLORS.surface3}; border-radius: 9px; padding: 3px; border: 1px solid ${COLORS.border}; }
   .page-pad { max-width: 1200px; margin: 0 auto; padding: 20px 24px 0; }
+  .bottom-nav { display: none; }
   @media (max-width: 768px) {
     .board-grid { grid-template-columns: 1fr; gap: 24px; }
     .stats-grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -88,9 +89,16 @@ const css = `
     .stats-grid-2 { grid-template-columns: 1fr; }
     .wellbeing-metrics { grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .form-grid-3 { grid-template-columns: 1fr; }
-    .header-inner { height: auto; flex-wrap: wrap; padding: 10px 16px; gap: 8px; }
-    .page-pad { padding: 14px 14px 0; }
+    .page-pad { padding: 14px 14px 90px; }
     input, textarea, select { font-size: 16px; }
+    .desktop-only { display: none !important; }
+    .header-inner { height: 54px; padding: 0 12px; }
+    .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e0e0e6; z-index: 200; padding: 6px 0 env(safe-area-inset-bottom, 6px); box-shadow: 0 -2px 12px rgba(0,0,0,0.06); }
+    .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 0; background: none; border: none; cursor: pointer; font-family: inherit; }
+    .bottom-nav-item span.icon { font-size: 20px; line-height: 1; }
+    .bottom-nav-item span.label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
+    .bottom-nav-item span.icon { position: relative; }
+    .bottom-nav-item.active span.icon::after { content: ""; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
   }
   @media (max-width: 480px) {
     .wellbeing-metrics { grid-template-columns: repeat(2, 1fr); }
@@ -2144,32 +2152,65 @@ function App() {
       {showFocus && frogTask && <FocusMode task={frogTask} onClose={() => setShowFocus(false)} />}
 
       {/* Header */}
-      <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, padding: "0 16px", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div className="header-inner">
+      <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div className="header-inner" style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
+          {/* Logo */}
           <div style={{ flex: 1, minWidth: 80 }}>
             <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3, lineHeight: 1.1 }}>Lawless OS</div>
-            <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 500, letterSpacing: 0.5 }}>LAWLESS OPERATING SYSTEM</div>
+            <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 500, letterSpacing: 0.5 }} className="desktop-only">LAWLESS OPERATING SYSTEM</div>
           </div>
 
-          <div style={{ display: "flex", gap: 2 }}>
-            <button onClick={undo} disabled={!history.length} title="Undo (Ctrl+Z)" style={{ background: COLORS.surface3, color: history.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: history.length ? 1 : 0.4 }}>↩</button>
-            <button onClick={redo} disabled={!future.length} title="Redo (Ctrl+Y)" style={{ background: COLORS.surface3, color: future.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: future.length ? 1 : 0.4 }}>↪</button>
-          </div>
-
-          <div className="view-toggle">
+          {/* Desktop view toggle */}
+          <div className="view-toggle desktop-only">
             {views.map(([v, label]) => (
               <button key={v} onClick={() => setView(v)} style={{ background: view===v ? COLORS.surface : "transparent", color: view===v ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 500, boxShadow: view===v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
             ))}
           </div>
 
-          <button onClick={() => setShowSearch(true)} title="Search (Ctrl+K)" style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>🔍</button>
-          {frogTask && <button onClick={() => setShowFocus(true)} title="Focus mode" style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.accent}30`, fontWeight: 600 }}>🎯</button>}
-          <button onClick={() => setShowDailyPlan(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>🤖 Plan</button>
-          <button onClick={() => setShowJournal(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>📝</button>
-          <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
-          <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 10px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>IO</button>
-          <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 600 }}>+ New</button>
+          {/* Desktop actions */}
+          <div className="desktop-only" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button onClick={undo} disabled={!history.length} title="Undo (Ctrl+Z)" style={{ background: COLORS.surface3, color: history.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: history.length ? 1 : 0.4 }}>↩</button>
+            <button onClick={redo} disabled={!future.length} title="Redo (Ctrl+Y)" style={{ background: COLORS.surface3, color: future.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: future.length ? 1 : 0.4 }}>↪</button>
+            {frogTask && <button onClick={() => setShowFocus(true)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.accent}30`, fontWeight: 600 }}>🎯 Focus</button>}
+            <button onClick={() => setShowDailyPlan(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>🤖 Plan</button>
+            <button onClick={() => setShowJournal(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>📝</button>
+            <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
+            <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 10px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>IO</button>
+          </div>
+
+          {/* Always-visible actions */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button onClick={() => setShowSearch(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 10px", fontSize: 15, border: `1px solid ${COLORS.border}` }}>🔍</button>
+            {frogTask && <button onClick={() => setShowFocus(true)} className="desktop-only" style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 10px", fontSize: 15, border: `1px solid ${COLORS.accent}30` }}>🎯</button>}
+            <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 700 }}>+ New</button>
+          </div>
         </div>
+      </div>
+
+      {/* Mobile bottom navigation */}
+      <div className="bottom-nav">
+        {[
+          { v: "board",     icon: "⊞", label: "Board"     },
+          { v: "calendar",  icon: "📅", label: "Calendar"  },
+          { v: "wellbeing", icon: "💆", label: "Wellbeing" },
+          { v: "analytics", icon: "◎",  label: "Analytics" },
+        ].map(({ v, icon, label }) => (
+          <button key={v} className="bottom-nav-item" onClick={() => setView(v)}
+            style={{ color: view === v ? COLORS.accent : COLORS.textMuted }}>
+            <span className="icon">{icon}</span>
+            <span className="label">{label}</span>
+          </button>
+        ))}
+        <button className="bottom-nav-item" onClick={() => setShowDaily(true)}
+          style={{ color: COLORS.textMuted }}>
+          <span className="icon">📋</span>
+          <span className="label">Daily</span>
+        </button>
+        <button className="bottom-nav-item" onClick={() => setShowDailyPlan(true)}
+          style={{ color: COLORS.textMuted }}>
+          <span className="icon">🤖</span>
+          <span className="label">Plan</span>
+        </button>
       </div>
 
       <div className="page-pad">
