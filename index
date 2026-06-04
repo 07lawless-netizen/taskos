@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskOS</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+const STORAGE_KEY = "vtm_tasks_v1";
+const COLORS = {
+  bg: "#f4f4f6",
+  surface: "#ffffff",
+  surface2: "#f9f9fb",
+  surface3: "#efeff2",
+  border: "#e0e0e6",
+  borderHover: "#c8c8d4",
+  text: "#1a1a24",
+  textMuted: "#9090a0",
+  textDim: "#6b6b80",
+  accent: "#4f46e5",
+  accentHover: "#4338ca",
+  accentDim: "#eeedfb",
+  frog: "#16a34a",
+  frogDim: "#dcfce7",
+  frogBorder: "#86efac",
+  frogDark: "#15803d",
+  high: "#dc2626",
+  highDim: "#fee2e2",
+  medium: "#d97706",
+  mediumDim: "#fef3c7",
+  low: "#2563eb",
+  lowDim: "#dbeafe",
+  done: "#6b7280",
+};
+
+const PRIORITY_CONFIG = {
+  High: { color: COLORS.high, dim: COLORS.highDim, label: "HIGH" },
+  Medium: { color: COLORS.medium, dim: COLORS.mediumDim, label: "MED" },
+  Low: { color: COLORS.low, dim: COLORS.lowDim, label: "LOW" },
+};
+
+const STATUS_COLS = ["To Do", "In Progress", "Done"];
+
+function generateId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function today() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split("T")[0];
+}
+
+const SAMPLE_TASKS = [
+  {
+    id: generateId(),
+    title: "Design new landing page",
+    description: "Revamp the homepage with updated branding and copy. Needs to work across mobile and desktop, and align with the new brand guidelines approved last month.",
+    priority: "High",
+    status: "In Progress",
+    due: today(),
+    isFrog: true,
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    completedAt: null,
+    aiBreakdown: null,
+    subtasks: [
+      { id: generateId(), title: "Wireframe layout", done: true },
+      { id: generateId(), title: "Write hero copy", done: true },
+      { id: generateId(), title: "Source imagery", done: false },
+      { id: generateId(), title: "Dev handoff", done: false },
+    ],
+  },
+  {
+    id: generateId(),
+    title: "Q3 analytics report",
+    description: "Compile performance data and present findings to stakeholders",
+    priority: "High",
+    status: "To Do",
+    due: new Date(Date.now() + 2 * 86400000).toISOString().split("T")[0],
+    isFrog: false,
+    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    completedAt: null,
+    aiBreakdown: null,
+    subtasks: [
+      { id: generateId(), title: "Pull data from dashboard", done: false },
+      { id: generateId(), title: "Build slide deck", done: false },
+    ],
+  },
+  {
+    id: generateId(),
+    title: "Update dependencies",
+    description: "Audit and update all npm packages to latest stable versions",
+    priority: "Low",
+    status: "To Do",
+    due: "",
+    isFrog: false,
+    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+    completedAt: null,
+    aiBreakdown: null,
+    subtasks: [],
+  },
+  {
+    id: generateId(),
+    title: "Team sync setup",
+    description: "Schedule and prepare agenda for monthly all-hands",
+    priority: "Medium",
+    status: "Done",
+    due: daysAgo(1),
+    isFrog: false,
+    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+    completedAt: new Date(Date.now() - 86400000).toISOString(),
+    aiBreakdown: null,
+    subtasks: [
+      { id: generateId(), title: "Draft agenda", done: true },
+      { id: generateId(), title: "Send calendar invite", done: true },
+    ],
+  },
+];
+
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'DM Sans', system-ui, sans-serif; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: ${COLORS.surface2}; }
+  ::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 3px; }
+  input, textarea, select {
+    background: ${COLORS.surface};
+    border: 1px solid ${COLORS.border};
+    color: ${COLORS.text};
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: ${COLORS.accent};
+    box-shadow: 0 0 0 3px ${COLORS.accentDim};
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; }
+  button { cursor: pointer; font-family: 'DM Sans', system-ui, sans-serif; border: none; }
+  textarea { resize: vertical; min-height: 80px; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .ai-fade-in {
+    animation: fadeIn 0.3s ease forwards;
+  }
+  .ai-thinking span {
+    display: inline-block;
+    animation: pulse 1.2s ease infinite;
+  }
+  .ai-thinking span:nth-child(2) { animation-delay: 0.2s; }
+  .ai-thinking span:nth-child(3) { animation-delay: 0.4s; }
+`;
+
+// ── AI Breakdown call ──────────────────────────────────────────────────────────
+async function fetchAIBreakdown(task) {
+  const subtaskList = task.subtasks.length
+    ? task.subtasks.map(s => `- ${s.title}${s.done ? " (done)" : ""}`).join("\n")
+    : "None listed";
+
+  const prompt = `You are a focused productivity assistant. A user has marked the following task as their most important thing to do today.
+
+Task title: ${task.title}
+Description: ${task.description || "No description provided"}
+Priority: ${task.priority}
+Due: ${task.due || "No due date"}
+Existing subtasks:
+${subtaskList}
+
+Respond with ONLY the following three sections, using these exact labels on their own lines:
+
+SUMMARY
+Write 2-3 sentences explaining what this task involves and why it matters.
+
+STEPS
+1. First step
+2. Second step
+3. Third step
+(4-8 numbered steps total, specific and actionable)
+
+WATCH OUT
+One sentence about the most likely thing that could derail this task.`;
+
+  const response = await fetch("/.netlify/functions/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+
+  const raw = await response.text();
+  console.log("Raw response status:", response.status);
+  console.log("Raw response body:", raw.slice(0, 300));
+
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch(e) {
+    throw new Error("Could not parse response: " + raw.slice(0, 100));
+  }
+
+  // Handle API errors gracefully
+  if (data.error) throw new Error(data.error.message || "API error");
+
+  const text = data.text || "";
+  console.log("Extracted text:", text.slice(0, 200));
+  if (!text) throw new Error("Empty response from API");
+
+  return parseBreakdown(text);
+}
+
+function parseBreakdown(text) {
+  // Split into lines and find each section
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+
+  let section = null;
+  const summaryLines = [];
+  const stepLines = [];
+  const watchLines = [];
+
+  for (const line of lines) {
+    const upper = line.toUpperCase();
+    if (upper === "SUMMARY" || upper.startsWith("SUMMARY:")) { section = "summary"; continue; }
+    if (upper === "STEPS" || upper.startsWith("STEPS:")) { section = "steps"; continue; }
+    if (upper === "WATCH OUT" || upper.startsWith("WATCH OUT:") || upper === "WATCH OUT") { section = "watch"; continue; }
+
+    if (section === "summary") summaryLines.push(line);
+    if (section === "steps") stepLines.push(line);
+    if (section === "watch") watchLines.push(line);
+  }
+
+  const parseSteps = raw => {
+    if (!raw.length) return [];
+    return raw
+      .map(l => l.replace(/^\d+[\.\)]\s*/, "").trim())
+      .filter(Boolean);
+  };
+
+  return {
+    summary: summaryLines.join(" ").trim() || text,
+    steps: parseSteps(stepLines),
+    watchOut: watchLines.join(" ").trim(),
+  };
+}
+
+// ── AI Breakdown Panel ─────────────────────────────────────────────────────────
+function AIBreakdownPanel({ task, onSaveBreakdown }) {
+  const [state, setState] = useState("idle"); // idle | loading | done | error
+  const [breakdown, setBreakdown] = useState(task.aiBreakdown || null);
+  const [stepsDone, setStepsDone] = useState({});
+
+  async function generate() {
+    setState("loading");
+    try {
+      const result = await fetchAIBreakdown(task);
+      setBreakdown(result);
+      onSaveBreakdown(task.id, result);
+      setState("done");
+    } catch (e) {
+      setState("error");
+    }
+  }
+
+  function toggleStep(i) {
+    setStepsDone(prev => ({ ...prev, [i]: !prev[i] }));
+  }
+
+  const hasBreakdown = breakdown && (breakdown.summary || breakdown.steps?.length);
+
+  return (
+    <div style={{
+      marginTop: 12,
+      borderTop: `1px solid ${COLORS.frogBorder}`,
+      paddingTop: 12,
+    }}>
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 14 }}>✨</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: COLORS.frogDark, letterSpacing: 0.3 }}>
+            AI Breakdown
+          </span>
+        </div>
+        <button
+          onClick={generate}
+          disabled={state === "loading"}
+          style={{
+            background: state === "loading" ? COLORS.surface3 : COLORS.frog,
+            color: state === "loading" ? COLORS.textMuted : "#fff",
+            borderRadius: 6, padding: "4px 12px", fontSize: 11, fontWeight: 600,
+            border: "none", transition: "all 0.15s",
+            opacity: state === "loading" ? 0.7 : 1,
+          }}
+        >
+          {state === "loading" ? "Thinking..." : hasBreakdown ? "Regenerate" : "Break it down"}
+        </button>
+      </div>
+
+      {/* Loading state */}
+      {state === "loading" && (
+        <div className="ai-thinking" style={{
+          background: COLORS.surface, borderRadius: 8, padding: "12px 14px",
+          fontSize: 13, color: COLORS.textMuted, border: `1px solid ${COLORS.border}`,
+          display: "flex", alignItems: "center", gap: 6
+        }}>
+          <span>●</span><span>●</span><span>●</span>
+          <span style={{ marginLeft: 4 }}>Analysing your task...</span>
+        </div>
+      )}
+
+      {/* Error state */}
+      {state === "error" && (
+        <div style={{
+          background: COLORS.highDim, borderRadius: 8, padding: "10px 14px",
+          fontSize: 12, color: COLORS.high, border: `1px solid #fca5a5`
+        }}>
+          Something went wrong. Check your connection and try again.
+        </div>
+      )}
+
+      {/* Results */}
+      {hasBreakdown && state !== "loading" && (
+        <div className="ai-fade-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+          {/* Summary */}
+          {breakdown.summary && (
+            <div style={{
+              background: COLORS.surface, borderRadius: 8, padding: "12px 14px",
+              border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.text,
+              lineHeight: 1.6
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.8, marginBottom: 6, textTransform: "uppercase" }}>What this involves</div>
+              {breakdown.summary}
+            </div>
+          )}
+
+          {/* Steps */}
+          {breakdown.steps?.length > 0 && (
+            <div style={{
+              background: COLORS.surface, borderRadius: 8, padding: "12px 14px",
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.8, marginBottom: 10, textTransform: "uppercase" }}>
+                Action plan — {breakdown.steps.filter((_, i) => stepsDone[i]).length}/{breakdown.steps.length} done
+              </div>
+
+              {/* Mini progress bar */}
+              <div style={{ height: 3, background: COLORS.surface3, borderRadius: 2, overflow: "hidden", marginBottom: 10 }}>
+                <div style={{
+                  height: "100%", borderRadius: 2, background: COLORS.frog,
+                  width: `${breakdown.steps.length ? (breakdown.steps.filter((_, i) => stepsDone[i]).length / breakdown.steps.length) * 100 : 0}%`,
+                  transition: "width 0.3s ease"
+                }} />
+              </div>
+
+              {breakdown.steps.map((step, i) => (
+                <div
+                  key={i}
+                  onClick={() => toggleStep(i)}
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: 10,
+                    padding: "7px 0",
+                    borderBottom: i < breakdown.steps.length - 1 ? `1px solid ${COLORS.surface3}` : "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{
+                    width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+                    border: `2px solid ${stepsDone[i] ? COLORS.frog : COLORS.border}`,
+                    background: stepsDone[i] ? COLORS.frog : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginTop: 1, transition: "all 0.15s"
+                  }}>
+                    {stepsDone[i] && <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>✓</span>}
+                  </div>
+                  <span style={{
+                    fontSize: 13, color: stepsDone[i] ? COLORS.textMuted : COLORS.text,
+                    textDecoration: stepsDone[i] ? "line-through" : "none",
+                    lineHeight: 1.5, transition: "all 0.15s", flex: 1
+                  }}>
+                    <strong style={{ color: stepsDone[i] ? COLORS.textMuted : COLORS.frogDark, marginRight: 4 }}>{i + 1}.</strong>
+                    {step}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Watch out */}
+          {breakdown.watchOut && (
+            <div style={{
+              background: COLORS.mediumDim, borderRadius: 8, padding: "10px 14px",
+              border: `1px solid #fcd34d`, fontSize: 12, color: "#92400e",
+              display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.5
+            }}>
+              <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+              <div>
+                <div style={{ fontWeight: 700, marginBottom: 2 }}>Watch out</div>
+                {breakdown.watchOut}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Badge ──────────────────────────────────────────────────────────────────────
+function Badge({ priority }) {
+  const cfg = PRIORITY_CONFIG[priority];
+  return (
+    <span style={{
+      background: cfg.dim, color: cfg.color,
+      fontSize: 10, fontWeight: 700, letterSpacing: 0.8,
+      padding: "3px 8px", borderRadius: 4,
+    }}>{cfg.label}</span>
+  );
+}
+
+// ── ProgressBar ────────────────────────────────────────────────────────────────
+function ProgressBar({ subtasks }) {
+  if (!subtasks.length) return null;
+  const pct = Math.round((subtasks.filter(s => s.done).length / subtasks.length) * 100);
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: COLORS.textMuted, marginBottom: 4 }}>
+        <span>{subtasks.filter(s => s.done).length}/{subtasks.length} subtasks</span>
+        <span>{pct}%</span>
+      </div>
+      <div style={{ height: 4, background: COLORS.surface3, borderRadius: 2, overflow: "hidden" }}>
+        <div style={{
+          height: "100%", width: `${pct}%`, borderRadius: 2,
+          background: pct === 100 ? COLORS.frog : COLORS.accent,
+          transition: "width 0.4s ease"
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ── TaskCard ───────────────────────────────────────────────────────────────────
+function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, isDragging, onSaveBreakdown }) {
+  const isOverdue = task.due && task.due < today() && task.status !== "Done";
+  const isDueToday = task.due === today();
+
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      style={{
+        background: task.isFrog ? COLORS.frogDim : COLORS.surface,
+        border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}`,
+        borderRadius: 10,
+        padding: 14,
+        marginBottom: 8,
+        cursor: "grab",
+        opacity: isDragging ? 0.4 : 1,
+        transition: "all 0.15s",
+        position: "relative",
+        overflow: "hidden",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+      }}
+    >
+      {task.isFrog && (
+        <div style={{
+          position: "absolute", top: 0, right: 0,
+          background: COLORS.frog, color: "#fff",
+          fontSize: 10, fontWeight: 700, letterSpacing: 0.6,
+          padding: "3px 10px", borderBottomLeftRadius: 8,
+        }}>🐸 FROG</div>
+      )}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+        <Badge priority={task.priority} />
+        {task.due && (
+          <span style={{
+            fontSize: 10,
+            color: isOverdue ? COLORS.high : isDueToday ? COLORS.medium : COLORS.textMuted,
+            padding: "3px 8px",
+            background: isOverdue ? COLORS.highDim : isDueToday ? COLORS.mediumDim : COLORS.surface3,
+            borderRadius: 4, fontWeight: 500
+          }}>
+            {isOverdue ? "⚠ " : isDueToday ? "📅 " : ""}{task.due}
+          </span>
+        )}
+      </div>
+      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, lineHeight: 1.4, paddingRight: task.isFrog ? 56 : 0, color: COLORS.text }}>
+        {task.title}
+      </div>
+      {task.description && (
+        <div style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.5, marginBottom: 8 }}>
+          {task.description.slice(0, 120)}{task.description.length > 120 ? "…" : ""}
+        </div>
+      )}
+      <ProgressBar subtasks={task.subtasks} />
+      <div style={{ display: "flex", gap: 5, marginTop: 12, alignItems: "center" }}>
+        <button onClick={() => onEdit(task)} style={{
+          background: COLORS.accentDim, color: COLORS.accent,
+          borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600,
+          border: "1px solid transparent"
+        }}>Edit</button>
+        <button onClick={() => onFrog(task.id)} style={{
+          background: task.isFrog ? COLORS.frogDim : COLORS.surface3,
+          color: task.isFrog ? COLORS.frog : COLORS.textMuted,
+          borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600,
+          border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}`
+        }}>{task.isFrog ? "🐸 Unfrog" : "🐸"}</button>
+        <select
+          value={task.status}
+          onChange={e => onStatusChange(task.id, e.target.value)}
+          style={{ flex: 1, fontSize: 12, padding: "5px 8px" }}
+        >
+          {STATUS_COLS.map(s => <option key={s}>{s}</option>)}
+        </select>
+        <button onClick={() => onDelete(task.id)} style={{
+          background: COLORS.highDim, color: COLORS.high,
+          borderRadius: 6, padding: "5px 8px", fontSize: 12,
+          border: "1px solid transparent"
+        }}>✕</button>
+      </div>
+
+      {/* AI Breakdown — only on frog tasks */}
+      {task.isFrog && (
+        <AIBreakdownPanel task={task} onSaveBreakdown={onSaveBreakdown} />
+      )}
+    </div>
+  );
+}
+
+// ── TaskModal ──────────────────────────────────────────────────────────────────
+function TaskModal({ task, onSave, onClose }) {
+  const [form, setForm] = useState(task || {
+    title: "", description: "", priority: "Medium", status: "To Do", due: "", subtasks: [], isFrog: false,
+    createdAt: new Date().toISOString(), completedAt: null, aiBreakdown: null
+  });
+  const [newSub, setNewSub] = useState("");
+
+  function setF(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  function addSub() {
+    if (!newSub.trim()) return;
+    setF("subtasks", [...form.subtasks, { id: generateId(), title: newSub.trim(), done: false }]);
+    setNewSub("");
+  }
+
+  function toggleSub(id) {
+    setF("subtasks", form.subtasks.map(s => s.id === id ? { ...s, done: !s.done } : s));
+  }
+
+  function removeSub(id) {
+    setF("subtasks", form.subtasks.filter(s => s.id !== id));
+  }
+
+  function handleSave() {
+    if (!form.title.trim()) return;
+    const wasNotDone = task?.status !== "Done";
+    const nowDone = form.status === "Done";
+    onSave({
+      ...form,
+      id: form.id || generateId(),
+      completedAt: (wasNotDone && nowDone) ? new Date().toISOString() : form.completedAt,
+    });
+  }
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+        borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "90vh",
+        overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700 }}>{task ? "Edit Task" : "New Task"}</h2>
+          <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>✕ Close</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.3, display: "block", marginBottom: 6 }}>TITLE *</label>
+            <input value={form.title} onChange={e => setF("title", e.target.value)} placeholder="What needs to be done?" />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.3, display: "block", marginBottom: 6 }}>DESCRIPTION</label>
+            <textarea value={form.description} onChange={e => setF("description", e.target.value)} placeholder="Add context or notes… (the more detail, the better the AI breakdown)" />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.3, display: "block", marginBottom: 6 }}>PRIORITY</label>
+              <select value={form.priority} onChange={e => setF("priority", e.target.value)}>
+                {Object.keys(PRIORITY_CONFIG).map(p => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.3, display: "block", marginBottom: 6 }}>STATUS</label>
+              <select value={form.status} onChange={e => setF("status", e.target.value)}>
+                {STATUS_COLS.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.3, display: "block", marginBottom: 6 }}>DUE DATE</label>
+              <input type="date" value={form.due} onChange={e => setF("due", e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.3, display: "block", marginBottom: 10 }}>SUBTASKS</label>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <input
+                value={newSub}
+                onChange={e => setNewSub(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addSub()}
+                placeholder="Add a subtask and press Enter…"
+              />
+              <button onClick={addSub} style={{
+                background: COLORS.accentDim, color: COLORS.accent,
+                borderRadius: 8, padding: "10px 16px", fontWeight: 700, fontSize: 14, flexShrink: 0,
+                border: "1px solid transparent"
+              }}>+</button>
+            </div>
+            {form.subtasks.map(s => (
+              <div key={s.id} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 12px", background: COLORS.surface3, borderRadius: 8, marginBottom: 6,
+                border: `1px solid ${COLORS.border}`
+              }}>
+                <input type="checkbox" checked={s.done} onChange={() => toggleSub(s.id)}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: COLORS.accent }} />
+                <span style={{ flex: 1, fontSize: 14, color: s.done ? COLORS.textMuted : COLORS.text, textDecoration: s.done ? "line-through" : "none" }}>
+                  {s.title}
+                </span>
+                <button onClick={() => removeSub(s.id)} style={{ background: "none", color: COLORS.textMuted, fontSize: 16 }}>✕</button>
+              </div>
+            ))}
+          </div>
+          <button onClick={handleSave} style={{
+            background: COLORS.accent,
+            color: "#fff", borderRadius: 8, padding: "13px", fontSize: 14, fontWeight: 600,
+            marginTop: 4
+          }}>
+            {task ? "Save Changes" : "Create Task"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── DailySummaryModal ──────────────────────────────────────────────────────────
+function DailySummaryModal({ tasks, onClose }) {
+  const todayStr = today();
+  const frog = tasks.find(t => t.isFrog);
+  const dueToday = tasks.filter(t => t.due === todayStr && t.status !== "Done");
+  const completedToday = tasks.filter(t => t.completedAt && t.completedAt.startsWith(todayStr));
+  const activeTasks = tasks.filter(t => t.status !== "Done" && t.subtasks.length > 0);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+        borderRadius: 14, width: "100%", maxWidth: 520, maxHeight: "90vh",
+        overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 700 }}>Daily Briefing</h2>
+            <p style={{ color: COLORS.textMuted, fontSize: 13, marginTop: 2 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</p>
+          </div>
+          <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>✕</button>
+        </div>
+        <div style={{ marginTop: 24 }}>
+          <SummarySection title="🐸 Kill the Frog">
+            {frog ? (
+              <div style={{ background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`, borderRadius: 10, padding: 14 }}>
+                <div style={{ fontWeight: 600, color: COLORS.frog, fontSize: 15 }}>{frog.title}</div>
+                {frog.description && <div style={{ fontSize: 13, color: COLORS.textDim, marginTop: 4 }}>{frog.description}</div>}
+                {frog.aiBreakdown?.steps?.length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${COLORS.frogBorder}` }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.frogDark, marginBottom: 6 }}>✨ AI ACTION PLAN</div>
+                    {frog.aiBreakdown.steps.map((s, i) => (
+                      <div key={i} style={{ fontSize: 12, color: COLORS.textDim, padding: "3px 0", lineHeight: 1.5 }}>
+                        <strong style={{ color: COLORS.frogDark }}>{i + 1}.</strong> {s}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ color: COLORS.textMuted, fontSize: 14 }}>No frog set. Pick your most important task!</div>
+            )}
+          </SummarySection>
+
+          <SummarySection title={`📅 Due Today (${dueToday.length})`}>
+            {dueToday.length === 0
+              ? <div style={{ color: COLORS.textMuted, fontSize: 14 }}>Nothing due today.</div>
+              : dueToday.map(t => (
+                <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${COLORS.border}` }}>
+                  <Badge priority={t.priority} />
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>{t.title}</span>
+                </div>
+              ))
+            }
+          </SummarySection>
+
+          <SummarySection title="Completed Today">
+            <div style={{
+              background: COLORS.surface2, borderRadius: 10, padding: 16,
+              display: "flex", alignItems: "center", gap: 16,
+              border: `1px solid ${COLORS.border}`
+            }}>
+              <div style={{ fontSize: 36, fontWeight: 700, color: COLORS.frog }}>{completedToday.length}</div>
+              <div style={{ color: COLORS.textDim, fontSize: 14 }}>task{completedToday.length !== 1 ? "s" : ""} completed today</div>
+            </div>
+          </SummarySection>
+
+          {activeTasks.length > 0 && (
+            <SummarySection title="Subtask Progress">
+              {activeTasks.slice(0, 4).map(t => (
+                <div key={t.id} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{t.title}</div>
+                  <ProgressBar subtasks={t.subtasks} />
+                </div>
+              ))}
+            </SummarySection>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummarySection({ title, children }) {
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5, color: COLORS.textMuted, marginBottom: 10, textTransform: "uppercase" }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+// ── AnalyticsView ──────────────────────────────────────────────────────────────
+function AnalyticsView({ tasks }) {
+  const todayStr = today();
+  const completedLast7 = Array.from({ length: 7 }, (_, i) => {
+    const d = daysAgo(6 - i);
+    return { date: d, count: tasks.filter(t => t.completedAt && t.completedAt.startsWith(d)).length };
+  });
+  const completedLast30 = Array.from({ length: 30 }, (_, i) => {
+    const d = daysAgo(29 - i);
+    return tasks.filter(t => t.completedAt && t.completedAt.startsWith(d)).length;
+  });
+  const maxBar = Math.max(...completedLast7.map(d => d.count), 1);
+  const max30 = Math.max(...completedLast30, 1);
+  const byPriority = Object.keys(PRIORITY_CONFIG).map(p => ({ priority: p, count: tasks.filter(t => t.priority === p).length }));
+  const completedTasks = tasks.filter(t => t.completedAt && t.createdAt);
+  const avgMs = completedTasks.length ? completedTasks.reduce((acc, t) => acc + (new Date(t.completedAt) - new Date(t.createdAt)), 0) / completedTasks.length : 0;
+  const avgDays = (avgMs / 86400000).toFixed(1);
+  const frogsCompleted = tasks.filter(t => t.isFrog && t.status === "Done").length;
+  const allSubs = tasks.flatMap(t => t.subtasks);
+  const subRate = allSubs.length ? Math.round((allSubs.filter(s => s.done).length / allSubs.length) * 100) : 0;
+  const aiBreakdownsGenerated = tasks.filter(t => t.aiBreakdown?.steps?.length > 0).length;
+  const svgH = 120, svgW = 380;
+
+  return (
+    <div style={{ padding: "0 0 40px" }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Analytics</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
+        <StatCard label="Avg Completion" value={`${avgDays}d`} sub="from create to done" />
+        <StatCard label="Subtask Rate" value={`${subRate}%`} sub={`${allSubs.filter(s => s.done).length}/${allSubs.length} done`} color={COLORS.frog} />
+        <StatCard label="Frogs Done" value={`${frogsCompleted}`} sub={`of ${tasks.filter(t => t.isFrog).length} active`} color={COLORS.frog} />
+        <StatCard label="AI Breakdowns" value={`${aiBreakdownsGenerated}`} sub="tasks analysed" color={COLORS.accent} />
+      </div>
+
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5, color: COLORS.textMuted, marginBottom: 16, textTransform: "uppercase" }}>Completions — Last 7 Days</div>
+        <svg viewBox={`0 0 ${svgW} ${svgH + 24}`} style={{ width: "100%", maxWidth: svgW }}>
+          {completedLast7.map((d, i) => {
+            const barH = (d.count / maxBar) * svgH;
+            const x = (i / 7) * svgW + 8;
+            const w = svgW / 7 - 16;
+            return (
+              <g key={d.date}>
+                <rect x={x} y={svgH - barH} width={w} height={barH || 2} rx={4} fill={d.date === todayStr ? COLORS.accent : COLORS.accentDim} />
+                {d.count > 0 && <text x={x + w / 2} y={svgH - barH - 6} textAnchor="middle" fill={COLORS.textMuted} fontSize={11}>{d.count}</text>}
+                <text x={x + w / 2} y={svgH + 17} textAnchor="middle" fill={COLORS.textMuted} fontSize={10}>
+                  {new Date(d.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short" }).slice(0, 2)}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5, color: COLORS.textMuted, marginBottom: 16, textTransform: "uppercase" }}>Completions — Last 30 Days</div>
+        <svg viewBox={`0 0 ${svgW} 80`} style={{ width: "100%", maxWidth: svgW }}>
+          <polyline
+            points={completedLast30.map((c, i) => { const x = (i / 29) * (svgW - 8) + 4; const y = 70 - (c / max30) * 60; return `${x},${y}`; }).join(" ")}
+            fill="none" stroke={COLORS.accent} strokeWidth={2} strokeLinejoin="round"
+          />
+          {completedLast30.map((c, i) => { if (c === 0) return null; const x = (i / 29) * (svgW - 8) + 4; const y = 70 - (c / max30) * 60; return <circle key={i} cx={x} cy={y} r={3} fill={COLORS.accent} />; })}
+        </svg>
+      </div>
+
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: 0.5, color: COLORS.textMuted, marginBottom: 16, textTransform: "uppercase" }}>By Priority</div>
+        {byPriority.map(({ priority, count }) => {
+          const cfg = PRIORITY_CONFIG[priority];
+          const max = Math.max(...byPriority.map(b => b.count), 1);
+          return (
+            <div key={priority} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 5 }}>
+                <span style={{ color: cfg.color, fontWeight: 600 }}>{priority}</span>
+                <span style={{ color: COLORS.textMuted }}>{count}</span>
+              </div>
+              <div style={{ height: 6, background: COLORS.surface3, borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${(count / max) * 100}%`, background: cfg.color, borderRadius: 4, transition: "width 0.5s" }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub, color }) {
+  return (
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+      <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>{label}</div>
+      <div style={{ fontSize: 26, fontWeight: 700, color: color || COLORS.accent }}>{value}</div>
+      <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{sub}</div>
+    </div>
+  );
+}
+
+// ── ImportExportModal ──────────────────────────────────────────────────────────
+function ImportExportModal({ tasks, onImport, onClose }) {
+  const [mode, setMode] = useState("export");
+  const [error, setError] = useState("");
+  const fileRef = useRef();
+
+  function handleExport() {
+    const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `tasks-${today()}.json`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error("Root must be an array of tasks");
+        const valid = data.every(t => t.id && t.title && t.status && t.priority);
+        if (!valid) throw new Error("Some tasks are missing required fields");
+        onImport(data);
+        onClose();
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  const schema = `[
+  {
+    "id": "string",
+    "title": "string",
+    "description": "string",
+    "priority": "High | Medium | Low",
+    "status": "To Do | In Progress | Done",
+    "due": "YYYY-MM-DD | \"\"",
+    "isFrog": false,
+    "createdAt": "ISO string",
+    "completedAt": "ISO string | null",
+    "aiBreakdown": null,
+    "subtasks": [
+      { "id": "string", "title": "string", "done": false }
+    ]
+  }
+]`;
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1000,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+        borderRadius: 14, width: "100%", maxWidth: 520, padding: 28,
+        boxShadow: "0 20px 60px rgba(0,0,0,0.15)"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700 }}>Import / Export</h2>
+          <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>✕</button>
+        </div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
+          {["export", "import", "schema"].map(m => (
+            <button key={m} onClick={() => setMode(m)} style={{
+              background: mode === m ? COLORS.accentDim : COLORS.surface3,
+              color: mode === m ? COLORS.accent : COLORS.textMuted,
+              borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 600,
+              textTransform: "capitalize", border: `1px solid ${mode === m ? COLORS.accent + "40" : COLORS.border}`
+            }}>{m}</button>
+          ))}
+        </div>
+        {mode === "export" && (
+          <div>
+            <p style={{ color: COLORS.textDim, fontSize: 14, marginBottom: 20 }}>Download all {tasks.length} tasks including AI breakdowns as a JSON file.</p>
+            <button onClick={handleExport} style={{ width: "100%", background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "13px", fontSize: 14, fontWeight: 600 }}>Download tasks.json</button>
+          </div>
+        )}
+        {mode === "import" && (
+          <div>
+            <p style={{ color: COLORS.textDim, fontSize: 14, marginBottom: 16 }}>Upload a JSON file. This will <strong style={{ color: COLORS.medium }}>replace</strong> all current tasks.</p>
+            {error && <div style={{ background: COLORS.highDim, color: COLORS.high, borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13 }}>⚠ {error}</div>}
+            <input type="file" accept=".json" ref={fileRef} onChange={handleImport} style={{ display: "none" }} />
+            <button onClick={() => fileRef.current.click()} style={{ width: "100%", background: COLORS.surface2, color: COLORS.text, border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: "20px", fontSize: 14, fontWeight: 500 }}>Choose JSON file to import</button>
+          </div>
+        )}
+        {mode === "schema" && (
+          <div>
+            <p style={{ color: COLORS.textDim, fontSize: 13, marginBottom: 12 }}>Expected JSON format:</p>
+            <pre style={{ background: COLORS.surface3, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: 14, fontSize: 11, color: COLORS.textDim, overflow: "auto", lineHeight: 1.7, fontFamily: "monospace" }}>{schema}</pre>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────────────────────
+function App() {
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : SAMPLE_TASKS;
+    } catch { return SAMPLE_TASKS; }
+  });
+
+  const [view, setView] = useState("board");
+  const [editingTask, setEditingTask] = useState(null);
+  const [showNew, setShowNew] = useState(false);
+  const [showDaily, setShowDaily] = useState(false);
+  const [showIE, setShowIE] = useState(false);
+  const [dragging, setDragging] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }, [tasks]);
+
+  function saveTask(task) {
+    setTasks(ts => {
+      const idx = ts.findIndex(t => t.id === task.id);
+      if (idx >= 0) { const n = [...ts]; n[idx] = task; return n; }
+      return [...ts, task];
+    });
+    setEditingTask(null);
+    setShowNew(false);
+  }
+
+  function deleteTask(id) { setTasks(ts => ts.filter(t => t.id !== id)); }
+
+  function toggleFrog(id) {
+    setTasks(ts => ts.map(t => ({
+      ...t, isFrog: t.id === id ? !t.isFrog : (t.id !== id && t.isFrog ? false : t.isFrog)
+    })));
+  }
+
+  function setStatus(id, status) {
+    setTasks(ts => ts.map(t => t.id === id ? {
+      ...t, status,
+      completedAt: status === "Done" && !t.completedAt ? new Date().toISOString() : t.completedAt
+    } : t));
+  }
+
+  function saveBreakdown(taskId, breakdown) {
+    setTasks(ts => ts.map(t => t.id === taskId ? { ...t, aiBreakdown: breakdown } : t));
+  }
+
+  function handleDrop(targetId, targetStatus) {
+    if (!dragging) return;
+    setTasks(ts => {
+      const arr = [...ts];
+      const fromIdx = arr.findIndex(t => t.id === dragging);
+      const toIdx = targetId ? arr.findIndex(t => t.id === targetId) : -1;
+      const task = { ...arr[fromIdx], status: targetStatus };
+      arr.splice(fromIdx, 1);
+      if (toIdx >= 0) arr.splice(toIdx, 0, task);
+      else arr.push(task);
+      return arr;
+    });
+    setDragging(null);
+    setDragOver(null);
+  }
+
+  const frogTask = tasks.find(t => t.isFrog);
+  const colDotColor = { "To Do": COLORS.textMuted, "In Progress": COLORS.medium, "Done": COLORS.frog };
+
+  return (
+    <div style={{ minHeight: "100vh", background: COLORS.bg }}>
+      <style>{css}</style>
+
+      {/* Header */}
+      <div style={{
+        background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`,
+        padding: "0 24px", position: "sticky", top: 0, zIndex: 100,
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 14, height: 58 }}>
+          <div style={{ fontWeight: 700, fontSize: 17, letterSpacing: -0.3, flex: 1, color: COLORS.text }}>TaskOS</div>
+          <div style={{ display: "flex", gap: 2, background: COLORS.surface3, borderRadius: 9, padding: 3, border: `1px solid ${COLORS.border}` }}>
+            {["board", "analytics"].map(v => (
+              <button key={v} onClick={() => setView(v)} style={{
+                background: view === v ? COLORS.surface : "transparent",
+                color: view === v ? COLORS.text : COLORS.textMuted,
+                borderRadius: 7, padding: "5px 14px", fontSize: 13, fontWeight: 500,
+                boxShadow: view === v ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                textTransform: "capitalize"
+              }}>{v === "board" ? "Board" : "Analytics"}</button>
+            ))}
+          </div>
+          <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
+          <button onClick={() => setShowIE(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Import / Export</button>
+          <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 600 }}>+ New Task</button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 24px 0" }}>
+        {/* Frog Banner */}
+        {frogTask && view === "board" && (
+          <div style={{
+            background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`,
+            borderRadius: 10, padding: "12px 18px",
+            display: "flex", alignItems: "center", gap: 14, marginBottom: 20
+          }}>
+            <span style={{ fontSize: 22 }}>🐸</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: COLORS.frog, fontWeight: 700, letterSpacing: 0.6, marginBottom: 2, textTransform: "uppercase" }}>Eat the Frog — Do this first</div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: COLORS.text }}>{frogTask.title}</div>
+            </div>
+            {frogTask.aiBreakdown?.steps?.length > 0 && (
+              <div style={{ fontSize: 11, color: COLORS.frogDark, fontWeight: 600, background: COLORS.surface, borderRadius: 6, padding: "3px 10px", border: `1px solid ${COLORS.frogBorder}` }}>
+                ✨ {frogTask.aiBreakdown.steps.length} steps ready
+              </div>
+            )}
+            <span style={{ background: COLORS.surface, color: COLORS.textMuted, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>{frogTask.status}</span>
+          </div>
+        )}
+
+        {view === "board" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18 }}>
+            {STATUS_COLS.map(col => {
+              const colTasks = tasks.filter(t => t.status === col);
+              return (
+                <div key={col}
+                  onDragOver={e => { e.preventDefault(); setDragOver(col); }}
+                  onDrop={e => { e.preventDefault(); handleDrop(null, col); }}
+                  style={{
+                    background: dragOver === col ? COLORS.surface3 : "transparent",
+                    borderRadius: 10, transition: "background 0.15s", minHeight: 200,
+                    border: dragOver === col ? `2px dashed ${COLORS.accent}40` : "2px solid transparent"
+                  }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "2px 0" }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: colDotColor[col] }} />
+                    <span style={{ fontWeight: 600, fontSize: 14, color: COLORS.text }}>{col}</span>
+                    <span style={{ background: COLORS.surface3, color: COLORS.textMuted, fontSize: 11, padding: "1px 7px", borderRadius: 10, border: `1px solid ${COLORS.border}`, fontWeight: 500 }}>{colTasks.length}</span>
+                  </div>
+                  {colTasks.map(t => (
+                    <TaskCard
+                      key={t.id} task={t}
+                      onEdit={setEditingTask} onDelete={deleteTask}
+                      onFrog={toggleFrog} onStatusChange={setStatus}
+                      onSaveBreakdown={saveBreakdown}
+                      isDragging={dragging === t.id}
+                      onDragStart={() => setDragging(t.id)}
+                      onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
+                      onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }}
+                    />
+                  ))}
+                  {colTasks.length === 0 && (
+                    <div style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: 24, textAlign: "center", color: COLORS.textMuted, fontSize: 13 }}>Drop tasks here</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {view === "analytics" && <AnalyticsView tasks={tasks} />}
+      </div>
+
+      {(showNew || editingTask) && (
+        <TaskModal task={editingTask} onSave={saveTask} onClose={() => { setShowNew(false); setEditingTask(null); }} />
+      )}
+      {showDaily && <DailySummaryModal tasks={tasks} onClose={() => setShowDaily(false)} />}
+      {showIE && <ImportExportModal tasks={tasks} onImport={data => setTasks(data)} onClose={() => setShowIE(false)} />}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+  </script>
+</body>
+</html>
