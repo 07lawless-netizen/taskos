@@ -10,6 +10,14 @@
 </head>
 <body>
   <div id="root"></div>
+  <script>
+    // Apply theme before React renders to avoid flash
+    (function() {
+      const t = localStorage.getItem("vtm_theme_v1") || "light";
+      document.body.style.background = t === "dark" ? "#0f0f14" : "#f4f4f6";
+      document.body.style.color = t === "dark" ? "#e8e8f0" : "#1a1a24";
+    })();
+  </script>
   <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
@@ -18,7 +26,9 @@ const WELLBEING_KEY = "vtm_wellbeing_v1";
 const USER_KEY = "vtm_user_v1";
 const PROJECTS_KEY = "vtm_projects_v1";
 const WORKHOURS_KEY = "vtm_workhours_v1";
-const COLORS = {
+const THEME_KEY = "vtm_theme_v1";
+
+const LIGHT_COLORS = {
   bg: "#f4f4f6", surface: "#ffffff", surface2: "#f9f9fb", surface3: "#efeff2",
   border: "#e0e0e6", borderHover: "#c8c8d4", text: "#1a1a24", textMuted: "#9090a0",
   textDim: "#6b6b80", accent: "#4f46e5", accentHover: "#4338ca", accentDim: "#eeedfb",
@@ -27,6 +37,19 @@ const COLORS = {
   low: "#2563eb", lowDim: "#dbeafe", done: "#6b7280",
   mood1: "#ef4444", mood2: "#f97316", mood3: "#eab308", mood4: "#84cc16", mood5: "#22c55e",
 };
+
+const DARK_COLORS = {
+  bg: "#0f0f14", surface: "#1a1a24", surface2: "#1f1f2e", surface3: "#252535",
+  border: "#2e2e42", borderHover: "#3d3d58", text: "#e8e8f0", textMuted: "#6b6b85",
+  textDim: "#9090a8", accent: "#7c6af7", accentHover: "#9585ff", accentDim: "#2d2850",
+  frog: "#22c97a", frogDim: "#0d3d25", frogBorder: "#1a6640", frogDark: "#22c97a",
+  high: "#f87171", highDim: "#3d1515", medium: "#fbbf24", mediumDim: "#3d2a0d",
+  low: "#60a5fa", lowDim: "#0d2a3d", done: "#6b7280",
+  mood1: "#ef4444", mood2: "#f97316", mood3: "#eab308", mood4: "#84cc16", mood5: "#22c55e",
+};
+
+// Mutable COLORS object — updated when theme changes
+let COLORS = localStorage.getItem(THEME_KEY) === "dark" ? {...DARK_COLORS} : {...LIGHT_COLORS};
 const PRIORITY_CONFIG = {
   High: { color: COLORS.high, dim: COLORS.highDim, label: "HIGH" },
   Medium: { color: COLORS.medium, dim: COLORS.mediumDim, label: "MED" },
@@ -782,14 +805,21 @@ function SummarySection({ title, children }) {
 // ── Weekly Summary ─────────────────────────────────────────────────────────────
 function WeeklySummary({ tasks }) {
   const [copied, setCopied] = useState(false);
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = last week, -1 = two weeks ago etc
+  const [weekOffset, setWeekOffset] = useState(-1); // -1 = last week, -2 = two weeks ago, 0 = this week
 
-  // Calculate the Monday-Sunday of the target week
+  // Calculate the Monday-Sunday of the target week (UK Mon-Sun weeks)
   function getWeekRange(offset) {
     const now = new Date();
+    now.setHours(0,0,0,0);
     const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1) + (offset * 7));
+    // Days since last Monday (treating Sunday as day 7, not 0)
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    // Start of the current week's Monday
+    const thisMonday = new Date(now);
+    thisMonday.setDate(now.getDate() - daysSinceMonday);
+    // Shift by offset weeks
+    const monday = new Date(thisMonday);
+    monday.setDate(thisMonday.getDate() + (offset * 7));
     monday.setHours(0,0,0,0);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
@@ -797,7 +827,7 @@ function WeeklySummary({ tasks }) {
     return { monday, sunday };
   }
 
-  const { monday, sunday } = getWeekRange(weekOffset === 0 ? -1 : weekOffset);
+  const { monday, sunday } = getWeekRange(weekOffset);
   const mondayStr = monday.toISOString().split("T")[0];
   const sundayStr = sunday.toISOString().split("T")[0];
 
@@ -805,6 +835,8 @@ function WeeklySummary({ tasks }) {
     ? "Last Week"
     : weekOffset === -2
     ? "Two Weeks Ago"
+    : weekOffset === 0
+    ? "This Week"
     : monday.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) + " – " + sunday.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
   const completed = tasks.filter(t =>
@@ -901,7 +933,7 @@ function WeeklySummary({ tasks }) {
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <button onClick={() => setWeekOffset(w => w - 1)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 6, padding: "5px 10px", fontSize: 12, border: `1px solid ${COLORS.border}` }}>←</button>
           <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.text, minWidth: 100, textAlign: "center" }}>{weekLabel}</span>
-          <button onClick={() => setWeekOffset(w => Math.min(w + 1, -1))} disabled={weekOffset >= -1} style={{ background: COLORS.surface3, color: weekOffset >= -1 ? COLORS.textMuted : COLORS.text, borderRadius: 6, padding: "5px 10px", fontSize: 12, border: `1px solid ${COLORS.border}`, opacity: weekOffset >= -1 ? 0.4 : 1 }}>→</button>
+          <button onClick={() => setWeekOffset(w => Math.min(w + 1, 0))} disabled={weekOffset >= 0} style={{ background: COLORS.surface3, color: weekOffset >= -1 ? COLORS.textMuted : COLORS.text, borderRadius: 6, padding: "5px 10px", fontSize: 12, border: `1px solid ${COLORS.border}`, opacity: weekOffset >= 0 ? 0.4 : 1 }}>→</button>
           <button onClick={copyToClipboard} style={{ background: copied ? COLORS.frogDim : COLORS.accentDim, color: copied ? COLORS.frog : COLORS.accent, borderRadius: 7, padding: "6px 14px", fontSize: 12, fontWeight: 700, border: `1px solid ${copied ? COLORS.frogBorder : COLORS.accent+"30"}`, transition: "all 0.2s" }}>
             {copied ? "✓ Copied!" : "Copy"}
           </button>
@@ -1139,6 +1171,8 @@ function Confetti({ onDone }) {
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    function onResize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener("resize", onResize);
     const pieces = Array.from({ length: 120 }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * -canvas.height,
@@ -1168,7 +1202,7 @@ function Confetti({ onDone }) {
     }
     draw();
     const t = setTimeout(() => { done = true; onDone(); }, 4000);
-    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+    return () => { cancelAnimationFrame(frame); clearTimeout(t); window.removeEventListener("resize", onResize); };
   }, []);
   return <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, zIndex: 9999, pointerEvents: "none" }} />;
 }
@@ -1751,76 +1785,6 @@ function ProjectManagerModal({ projects, onSave, onDelete, onClose }) {
   );
 }
 
-// ── Time Tracker ───────────────────────────────────────────────────────────────
-function TimeTracker({ task, onUpdate }) {
-  const [running, setRunning] = useState(false);
-  const [startedAt, setStartedAt] = useState(null);
-  const [elapsed, setElapsed] = useState(task.timeSpent || 0); // seconds
-  const intervalRef = useRef(null);
-
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => {
-        setElapsed(task.timeSpent + Math.floor((Date.now() - startedAt) / 1000));
-      }, 1000);
-    }
-    return () => clearInterval(intervalRef.current);
-  }, [running, startedAt]);
-
-  function toggle() {
-    if (running) {
-      clearInterval(intervalRef.current);
-      const newTotal = task.timeSpent + Math.floor((Date.now() - startedAt) / 1000);
-      setElapsed(newTotal);
-      onUpdate(task.id, newTotal);
-      setRunning(false);
-      setStartedAt(null);
-    } else {
-      setStartedAt(Date.now());
-      setRunning(true);
-    }
-  }
-
-  function reset() {
-    clearInterval(intervalRef.current);
-    setRunning(false);
-    setStartedAt(null);
-    setElapsed(0);
-    onUpdate(task.id, 0);
-  }
-
-  function fmtTime(s) {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    if (h > 0) return `${h}h ${String(m).padStart(2,"0")}m`;
-    return `${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`;
-  }
-
-  const estimated = task.estimatedMins ? task.estimatedMins * 60 : null;
-  const pct = estimated ? Math.min((elapsed / estimated) * 100, 100) : null;
-
-  return (
-    <div style={{ marginTop: 10, padding: "10px 12px", background: COLORS.surface2, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, flex: 1 }}>⏱ TIME</span>
-        <span style={{ fontSize: 15, fontWeight: 700, fontFamily: "monospace", color: running ? COLORS.accent : COLORS.text }}>
-          {fmtTime(elapsed)}
-        </span>
-        {estimated && <span style={{ fontSize: 11, color: COLORS.textMuted }}>/ {fmtTime(estimated)}</span>}
-        <button onClick={toggle} style={{ background: running ? COLORS.highDim : COLORS.accentDim, color: running ? COLORS.high : COLORS.accent, borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, border: "none" }}>
-          {running ? "⏹ Stop" : "▶ Start"}
-        </button>
-        {elapsed > 0 && !running && <button onClick={reset} style={{ background: "none", color: COLORS.textMuted, fontSize: 13 }}>↺</button>}
-      </div>
-      {pct !== null && (
-        <div style={{ marginTop: 8, height: 3, background: COLORS.surface3, borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: pct >= 100 ? COLORS.high : COLORS.accent, borderRadius: 2, transition: "width 1s linear" }} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── AI Daily Plan Modal ────────────────────────────────────────────────────────
 function AIDailyPlanModal({ tasks, checkins, onClose }) {
@@ -2103,7 +2067,7 @@ function CorrelationAnalysis({ tasks, checkins }) {
     const mid = enriched.filter(c => c[metric] === 3);
     const high = enriched.filter(c => c[metric] >= 4);
     const avg = arr => arr.length ? (arr.reduce((a, c) => a + c.completed, 0) / arr.length).toFixed(1) : null;
-    return { low: avg(low), mid: avg(mid), high: avg(high), lowN: low.length, highN: high.length };
+    return { low: avg(low), mid: avg(mid), high: avg(high), lowN: low.length, midN: mid.length, highN: high.length };
   }
 
   function insight(metric, data) {
@@ -2165,7 +2129,7 @@ function CorrelationAnalysis({ tasks, checkins }) {
 
 
 // ── Settings View ─────────────────────────────────────────────────────────────
-function SettingsView({ user, workHours, projects, onSaveUser, onSaveWorkHours, onSaveProject, onDeleteProject, onClearData }) {
+function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveUser, onSaveWorkHours, onSaveProject, onDeleteProject, onClearData }) {
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [wStart, setWStart] = useState(workHours?.start || "09:00");
@@ -2204,6 +2168,30 @@ function SettingsView({ user, workHours, projects, onSaveUser, onSaveWorkHours, 
   return (
     <div style={{ paddingBottom: 40 }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Settings</h2>
+
+      {/* Appearance */}
+      <Section title="Appearance">
+        <div style={{ display: "flex", gap: 12 }}>
+          {["light", "dark"].map(t => (
+            <button key={t} onClick={() => onToggleTheme(t)}
+              style={{
+                flex: 1, padding: "14px 16px", borderRadius: 10, cursor: "pointer",
+                border: `2px solid ${theme === t ? COLORS.accent : COLORS.border}`,
+                background: t === "light" ? "#f4f4f6" : "#0f0f14",
+                transition: "border 0.2s",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 8
+              }}>
+              <div style={{ display: "flex", gap: 4 }}>
+                <div style={{ width: 24, height: 24, borderRadius: 4, background: t === "light" ? "#ffffff" : "#1a1a24", border: "1px solid #e0e0e6" }} />
+                <div style={{ width: 24, height: 24, borderRadius: 4, background: t === "light" ? "#4f46e5" : "#7c6af7" }} />
+                <div style={{ width: 24, height: 24, borderRadius: 4, background: t === "light" ? "#f4f4f6" : "#0f0f14", border: "1px solid #2e2e42" }} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: t === "light" ? "#1a1a24" : "#e8e8f0", textTransform: "capitalize" }}>{t} Mode</div>
+              {theme === t && <div style={{ fontSize: 11, color: COLORS.accent, fontWeight: 600 }}>✓ Active</div>}
+            </button>
+          ))}
+        </div>
+      </Section>
 
       {/* Profile */}
       <Section title="Profile">
@@ -2391,6 +2379,8 @@ function App() {
   const [tasks, setTasks] = useState(() => { try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : SAMPLE_TASKS; } catch { return SAMPLE_TASKS; } });
   const [checkins, setCheckins] = useState(() => { try { const s = localStorage.getItem(WELLBEING_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [user, setUser] = useState(() => { try { const s = localStorage.getItem(USER_KEY); return s ? JSON.parse(s) : null; } catch { return null; } });
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "light");
+  const [, forceUpdate] = useState(0);
   const [projects, setProjects] = useState(() => { try { const s = localStorage.getItem(PROJECTS_KEY); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [workHours, setWorkHours] = useState(() => { try { const s = localStorage.getItem(WORKHOURS_KEY); return s ? JSON.parse(s) : { start: "09:00", end: "17:30" }; } catch { return { start: "09:00", end: "17:30" }; } });
   const [history, setHistory] = useState([]);
@@ -2492,6 +2482,18 @@ function App() {
   function saveBreakdown(taskId, breakdown) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, aiBreakdown: breakdown } : t)); }
   function saveHappiness(taskId, rating) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, happiness: rating } : t)); }
   function saveUser(userData) { setUser(userData); localStorage.setItem(USER_KEY, JSON.stringify(userData)); }
+  function toggleTheme(newTheme) {
+    const t = newTheme || (theme === "light" ? "dark" : "light");
+    localStorage.setItem(THEME_KEY, t);
+    // Mutate COLORS in place so all components re-read updated values
+    const palette = t === "dark" ? DARK_COLORS : LIGHT_COLORS;
+    Object.keys(palette).forEach(k => { COLORS[k] = palette[k]; });
+    // Update body background immediately
+    document.body.style.background = COLORS.bg;
+    document.body.style.color = COLORS.text;
+    setTheme(t);
+    forceUpdate(n => n + 1);
+  }
   function saveCheckin(entry) { setCheckins(prev => { const filtered = prev.filter(c => c.date !== entry.date); return [...filtered, entry]; }); }
   function saveWorkHours(wh) { setWorkHours(wh); }
   function updateTimeSpent(taskId, seconds) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, timeSpent: seconds } : t)); }
@@ -2600,7 +2602,7 @@ function App() {
       </div>
 
       {/* Mobile bottom navigation */}
-      <div className="bottom-nav">
+      <div className="bottom-nav" style={{ background: COLORS.surface, borderTop: `1px solid ${COLORS.border}` }}>
         {[
           { v: "board", label: "Board", svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> },
           { v: "calendar", label: "Calendar", svg: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
@@ -2703,7 +2705,7 @@ function App() {
         {view === "calendar" && <CalendarView tasks={tasks} onEdit={setEditingTask} />}
         {view === "wellbeing" && <WellbeingView checkins={checkins} tasks={tasks} onOpenCheckin={() => setShowCheckin(true)} />}
         {view === "analytics" && <AnalyticsView tasks={tasks} />}
-        {view === "settings" && <SettingsView user={user} workHours={workHours} projects={projects} onSaveUser={saveUser} onSaveWorkHours={saveWorkHours} onSaveProject={saveProject} onDeleteProject={deleteProject} onClearData={clearData} />}
+        {view === "settings" && <SettingsView user={user} workHours={workHours} projects={projects} theme={theme} onToggleTheme={toggleTheme} onSaveUser={saveUser} onSaveWorkHours={saveWorkHours} onSaveProject={saveProject} onDeleteProject={deleteProject} onClearData={clearData} />}
       </div>
 
       {!user && <OnboardingModal onComplete={saveUser} />}
