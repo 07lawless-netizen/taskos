@@ -20,6 +20,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     .login-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -157,52 +158,172 @@ const SAMPLE_TASKS = [
 ];
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Serif+Display:ital@0;1&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: #0f0f14; }
-  body { min-height: 100dvh;background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'DM Sans', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { min-height: 100dvh; background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'DM Sans', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; }
+  
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: ${COLORS.surface2}; }
   ::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 3px; }
-  input, textarea, select { background: ${COLORS.surface}; border: 1px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 8px; padding: 10px 14px; font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; }
+  
+  input, textarea, select { background: ${COLORS.surface}; border: 1px solid ${COLORS.border}; color: ${COLORS.text}; border-radius: 10px; padding: 10px 14px; font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; }
   input:focus, textarea:focus, select:focus { border-color: ${COLORS.accent}; box-shadow: 0 0 0 3px ${COLORS.accentDim}; }
   input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; }
   input[type="range"] { padding: 0; height: 6px; cursor: pointer; accent-color: ${COLORS.accent}; }
   button { cursor: pointer; font-family: 'DM Sans', system-ui, sans-serif; border: none; }
   textarea { resize: vertical; min-height: 80px; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-  .ai-fade-in { animation: fadeIn 0.3s ease forwards; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+  .ai-fade-in { animation: fadeIn 0.35s ease forwards; }
   .ai-thinking span { display:inline-block; animation: pulse 1.2s ease infinite; }
   .ai-thinking span:nth-child(2) { animation-delay: 0.2s; }
   .ai-thinking span:nth-child(3) { animation-delay: 0.4s; }
-  .board-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-  .stats-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-  .stats-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
-  .stats-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .task-enter { animation: slideIn 0.2s ease forwards; }
+
+  /* Layout */
+  .board-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .stats-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stats-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+  .stats-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
   .wellbeing-metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
   .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-  .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 12px; height: 58px; }
-  .view-toggle { display: flex; gap: 2px; background: ${COLORS.surface3}; border-radius: 9px; padding: 3px; border: 1px solid ${COLORS.border}; }
-  .page-pad { max-width: 1200px; margin: 0 auto; padding: 20px 24px 0; }
+  .page-pad { max-width: 1200px; margin: 0 auto; padding: 24px 28px 0; }
+
+  /* Header */
+  .app-header {
+    background: ${COLORS.surface};
+    border-bottom: 1px solid ${COLORS.border};
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 20px; }
+  
+  /* View toggle - pill style */
+  .view-toggle {
+    display: flex; gap: 1px;
+    background: ${COLORS.surface3};
+    border-radius: 100px;
+    padding: 3px;
+    border: 1px solid ${COLORS.border};
+  }
+  .view-toggle button {
+    border-radius: 100px;
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+
+  /* Board columns */
+  .col-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px; padding-bottom: 12px;
+    border-bottom: 2px solid ${COLORS.border};
+    color: ${COLORS.text};
+  }
+  .col-status-line {
+    width: 3px; height: 16px; border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* Task cards - redesigned */
+  .task-card {
+    background: ${COLORS.surface};
+    border: 1px solid ${COLORS.border};
+    border-radius: 12px;
+    padding: 0;
+    margin-bottom: 10px;
+    cursor: grab;
+    transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    color: ${COLORS.text};
+  }
+  .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-1px); border-color: ${COLORS.borderHover}; }
+  .task-card.is-frog { border-color: ${COLORS.frogBorder}; background: ${COLORS.frogDim}; }
+  .task-card.is-dragging { opacity: 0.4; }
+  .task-card-footer { background: ${COLORS.surface2}; }
+  .task-card.is-frog .task-card-footer { background: ${COLORS.frogDim}; }
+  .task-card-priority-line {
+    height: 3px; width: 100%;
+  }
+  .task-card-body { padding: 14px 16px; }
+  .task-card-footer {
+    padding: 8px 16px 10px;
+    border-top: 1px solid ${COLORS.border};
+    display: flex; align-items: center; gap: 6px;
+  }
+  .task-card.is-frog .task-card-footer { border-top-color: ${COLORS.frogBorder}; }
+
+  /* Stat cards */
+  .stat-card {
+    background: ${COLORS.surface};
+    border: 1px solid ${COLORS.border};
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    transition: box-shadow 0.15s;
+    color: ${COLORS.text};
+  }
+  .stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.07); }
+
+  /* Section card */
+  .section-card {
+    background: ${COLORS.surface};
+    border: 1px solid ${COLORS.border};
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .section-card-title {
+    font-size: 13px; font-weight: 700;
+    margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid ${COLORS.border};
+    letter-spacing: -0.1px;
+  }
+
+  /* Drop zone */
+  .drop-zone-active {
+    background: ${COLORS.accentDim};
+    border: 2px dashed ${COLORS.accent};
+    border-radius: 12px;
+  }
+
+  /* Bottom nav */
   .bottom-nav { display: none; }
+
   @media (max-width: 768px) {
-    .board-grid { grid-template-columns: 1fr; gap: 24px; }
+    .board-grid { grid-template-columns: 1fr; gap: 28px; }
     .stats-grid-4 { grid-template-columns: repeat(2, 1fr); }
     .stats-grid-3 { grid-template-columns: repeat(2, 1fr); }
     .stats-grid-2 { grid-template-columns: 1fr; }
     .wellbeing-metrics { grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .form-grid-3 { grid-template-columns: 1fr; }
-    .page-pad { padding: 14px 14px 90px; }
+    .page-pad { padding: 16px 16px 90px; }
     input, textarea, select { font-size: 16px; }
     .desktop-only { display: none !important; }
-    .header-inner { height: 54px; padding: 0 12px; }
-    .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e0e0e6; z-index: 200; padding: 6px 0 max(env(safe-area-inset-bottom), 6px); box-shadow: 0 -2px 12px rgba(0,0,0,0.06); }
-    .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 0; background: none; border: none; cursor: pointer; font-family: inherit; }
-    .bottom-nav-item span.icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+    .header-inner { height: 56px; padding: 0 14px; }
+    .bottom-nav {
+      display: flex;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: ${COLORS.surface};
+      border-top: 1px solid ${COLORS.border};
+      z-index: 200;
+      padding: 6px 0 max(env(safe-area-inset-bottom), 6px);
+      box-shadow: 0 -2px 16px rgba(0,0,0,0.06);
+    }
+    .bottom-nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px; padding: 4px 0;
+      background: none; border: none; cursor: pointer; font-family: inherit;
+    }
     .bottom-nav-item span.label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
-    .bottom-nav-item span.icon { position: relative; }
-    .bottom-nav-item.active span.icon::after { content: ""; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
   }
   @media (max-width: 480px) {
     .wellbeing-metrics { grid-template-columns: repeat(2, 1fr); }
@@ -415,7 +536,7 @@ function WellbeingCheckinModal({ onSave, onClose, existing }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: COLORS.surface, borderRadius: 14, padding: 28, maxWidth: 480, width: "100%", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
+      <div style={{ background: COLORS.surface, borderRadius: 18, padding: 28, maxWidth: 480, width: "100%", maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 700 }}>Daily Check-in</h2>
@@ -527,17 +648,17 @@ function WellbeingView({ checkins, tasks, onOpenCheckin }) {
 
       {/* Week comparison */}
       <div className="stats-grid-3">
-        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div className="stat-card">
           <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>Avg Mood This Week</div>
           <div style={{ fontSize: 26, fontWeight: 700, color: thisWeek.length ? moodColor(Math.round(avg(thisWeek, "mood"))) : COLORS.textMuted }}>{avg(thisWeek, "mood") || "—"}</div>
           {lastWeek.length > 0 && <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>vs {avg(lastWeek, "mood")} last week</div>}
         </div>
-        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div className="stat-card">
           <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>Avg Energy This Week</div>
           <div style={{ fontSize: 26, fontWeight: 700, color: thisWeek.length ? moodColor(Math.round(avg(thisWeek, "energy"))) : COLORS.textMuted }}>{avg(thisWeek, "energy") || "—"}</div>
           {lastWeek.length > 0 && <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>vs {avg(lastWeek, "energy")} last week</div>}
         </div>
-        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+        <div className="stat-card">
           <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>Task Happiness</div>
           <div style={{ fontSize: 26, fontWeight: 700, color: avgHappiness ? moodColor(Math.round(avgHappiness)) : COLORS.textMuted }}>
             {avgHappiness ? `${avgHappiness}★` : "—"}
@@ -596,7 +717,7 @@ function WellbeingView({ checkins, tasks, onOpenCheckin }) {
           const vals = last14.filter(d => d.entry).map(d => d.entry[key]);
           const avgVal = vals.length ? (vals.reduce((a,b) => a+b,0)/vals.length).toFixed(1) : null;
           return (
-            <div key={key} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <div key={key} className="stat-card">
               <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10 }}>{cfg.emoji} {cfg.label} (14-day avg)</div>
               <div style={{ fontSize: 28, fontWeight: 700, color: avgVal ? cfg.color : COLORS.textMuted }}>{avgVal || "—"}<span style={{ fontSize: 14, fontWeight: 400, color: COLORS.textMuted }}>/5</span></div>
               <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
@@ -665,28 +786,81 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
   const isOverdue = task.due && task.due < today() && task.status !== "Done";
   const isDueToday = task.due === today();
   const project = projects?.find(p => p.id === task.projectId);
+  const priorityColors = {
+    High: { line: COLORS.high, badge: COLORS.highDim, text: COLORS.high },
+    Medium: { line: COLORS.medium, badge: COLORS.mediumDim, text: COLORS.medium },
+    Low: { line: COLORS.low, badge: COLORS.lowDim, text: COLORS.low },
+  };
+  const pc = priorityColors[task.priority] || priorityColors.Medium;
+
   return (
-    <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
-      style={{ background: task.isFrog ? COLORS.frogDim : COLORS.surface, border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}`, borderRadius: 10, padding: 14, marginBottom: 8, cursor: "grab", opacity: isDragging ? 0.4 : 1, transition: "all 0.15s", position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      {task.isFrog && <div style={{ position: "absolute", top: 0, right: 0, background: COLORS.frog, color: "#fff", fontSize: 10, fontWeight: 700, padding: "3px 10px", borderBottomLeftRadius: 8 }}>🐸 FROG</div>}
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-        <Badge priority={task.priority} />
-        {project && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 4, background: getProjectColor(project.colorId).bg, color: getProjectColor(project.colorId).text, border: `1px solid ${getProjectColor(project.colorId).border}` }}>{project.name}</span>}
-        {task.due && <span style={{ fontSize: 10, color: isOverdue ? COLORS.high : isDueToday ? COLORS.medium : COLORS.textMuted, padding: "3px 8px", background: isOverdue ? COLORS.highDim : isDueToday ? COLORS.mediumDim : COLORS.surface3, borderRadius: 4, fontWeight: 500 }}>{isOverdue ? "⚠ " : isDueToday ? "📅 " : ""}{task.due}</span>}
-        {task.happiness && <span style={{ fontSize: 10, padding: "3px 8px", background: COLORS.surface3, borderRadius: 4 }}>{"⭐".repeat(task.happiness)}</span>}
+    <div
+      draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
+      className={`task-card${task.isFrog ? " is-frog" : ""}${isDragging ? " is-dragging" : ""}`}
+    >
+      {/* Priority colour line at top */}
+      <div className="task-card-priority-line" style={{ background: task.isFrog ? COLORS.frog : pc.line }} />
+
+      <div className="task-card-body">
+        {/* Frog label */}
+        {task.isFrog && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.frog, letterSpacing: 0.8, textTransform: "uppercase" }}>🐸 Priority task</span>
+          </div>
+        )}
+
+        {/* Tags row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: pc.text, background: pc.badge, padding: "2px 7px", borderRadius: 4, letterSpacing: 0.5 }}>
+            {task.priority.toUpperCase()}
+          </span>
+          {project && (
+            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, background: getProjectColor(project.colorId).bg, color: getProjectColor(project.colorId).text, border: `1px solid ${getProjectColor(project.colorId).border}` }}>
+              {project.name}
+            </span>
+          )}
+          {task.due && (
+            <span style={{ fontSize: 10, color: isOverdue ? COLORS.high : isDueToday ? COLORS.medium : COLORS.textMuted, padding: "2px 7px", background: isOverdue ? COLORS.highDim : isDueToday ? COLORS.mediumDim : COLORS.surface3, borderRadius: 4, fontWeight: 500 }}>
+              {isOverdue ? "⚠ " : isDueToday ? "● " : ""}{task.due}
+            </span>
+          )}
+          {task.happiness && (
+            <span style={{ fontSize: 10, padding: "2px 7px", background: COLORS.surface3, borderRadius: 4, color: COLORS.medium }}>
+              {"★".repeat(task.happiness)}
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.45, color: COLORS.text, marginBottom: task.description ? 5 : 0 }}>
+          {task.title}
+        </div>
+
+        {/* Description */}
+        {task.description && (
+          <div style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.55, marginTop: 4 }}>
+            {task.description.slice(0, 100)}{task.description.length > 100 ? "…" : ""}
+          </div>
+        )}
+
+        {/* Progress */}
+        {task.subtasks && task.subtasks.length > 0 && <ProgressBar subtasks={task.subtasks} />}
+
+        {/* AI Breakdown */}
+        <AIBreakdownPanel task={task} onSaveBreakdown={onSaveBreakdown} />
       </div>
-      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, lineHeight: 1.4, paddingRight: task.isFrog ? 56 : 0 }}>{task.title}</div>
-      {task.description && <div style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.5, marginBottom: 8 }}>{task.description.slice(0, 120)}{task.description.length > 120 ? "…" : ""}</div>}
-      <ProgressBar subtasks={task.subtasks} />
-      <div style={{ display: "flex", gap: 5, marginTop: 12, alignItems: "center" }}>
-        <button onClick={() => onEdit(task)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}>Edit</button>
-        <button onClick={() => onFrog(task.id)} style={{ background: task.isFrog ? COLORS.frogDim : COLORS.surface3, color: task.isFrog ? COLORS.frog : COLORS.textMuted, borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}` }}>{task.isFrog ? "🐸 Unfrog" : "🐸"}</button>
-        <select value={task.status} onChange={e => onStatusChange(task.id, e.target.value)} style={{ flex: 1, fontSize: 12, padding: "5px 8px" }}>
+
+      {/* Card footer */}
+      <div className="task-card-footer">
+        <button onClick={() => onEdit(task)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 7, padding: "4px 10px", fontSize: 12, fontWeight: 600 }}>Edit</button>
+        <button onClick={() => onFrog(task.id)} style={{ background: task.isFrog ? COLORS.frogDim : COLORS.surface3, color: task.isFrog ? COLORS.frog : COLORS.textMuted, borderRadius: 7, padding: "4px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${task.isFrog ? COLORS.frogBorder : COLORS.border}` }}>
+          {task.isFrog ? "🐸 Unfrog" : "🐸"}
+        </button>
+        <select value={task.status} onChange={e => onStatusChange(task.id, e.target.value)} style={{ flex: 1, fontSize: 12, padding: "4px 8px" }}>
           {STATUS_COLS.map(s => <option key={s}>{s}</option>)}
         </select>
-        <button onClick={() => onDelete(task.id)} style={{ background: COLORS.highDim, color: COLORS.high, borderRadius: 6, padding: "5px 8px", fontSize: 12 }}>✕</button>
+        <button onClick={() => onDelete(task.id)} style={{ background: COLORS.highDim, color: COLORS.high, borderRadius: 7, padding: "4px 8px", fontSize: 12, fontWeight: 600 }}>✕</button>
       </div>
-      <AIBreakdownPanel task={task} onSaveBreakdown={onSaveBreakdown} />
     </div>
   );
 }
@@ -718,7 +892,7 @@ function TaskModal({ task, onSave, onClose, projects }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 560, maxHeight: "90vh", overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
+      <div style={{ background: COLORS.surface, borderRadius: 18, width: "100%", maxWidth: 560, maxHeight: "90vh", overflow: "auto", padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", border: `1px solid ${COLORS.border}` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700 }}>{task ? "Edit Task" : "New Task"}</h2>
           <button onClick={onClose} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>✕ Close</button>
@@ -833,7 +1007,7 @@ function DailySummaryModal({ tasks, checkins, onClose, onOpenCheckin }) {
                 {frog.aiBreakdown?.steps?.length > 0 && (
                   <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${COLORS.frogBorder}` }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.frogDark, marginBottom: 6 }}>✨ AI ACTION PLAN</div>
-                    {frog.aiBreakdown.steps.map((s, i) => <div key={i} style={{ fontSize: 12, color: COLORS.textDim, padding: "3px 0", lineHeight: 1.5 }}><strong style={{ color: COLORS.frogDark }}>{i+1}.</strong> {s}</div>)}
+                    {frog.aiBreakdown.steps.map((s, i) => <div key={i} style={{ fontSize: 12, color: COLORS.textDim, padding: "3px 0", lineHeight: 1.5, wordBreak: "break-word", overflowWrap: "break-word" }}><strong style={{ color: COLORS.frogDark }}>{i+1}.</strong> {s}</div>)}
                   </div>
                 )}
               </div>
@@ -1091,7 +1265,7 @@ function AnalyticsView({ tasks }) {
           { label: "Current Streak", value: `${streak}d`, sub: streak > 0 ? "days with completions" : "no completions yet", color: streak >= 5 ? COLORS.frog : COLORS.accent },
           { label: "Busiest Day", value: byDay[busiestDay] > 0 ? dayNames[busiestDay] : "—", sub: byDay[busiestDay] > 0 ? `${byDay[busiestDay]} completions` : "not enough data" },
         ].map(c => (
-          <div key={c.label} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <div key={c.label} className="stat-card">
             <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>{c.label}</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: c.color || COLORS.accent }}>{c.value}</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{c.sub}</div>
@@ -1107,7 +1281,7 @@ function AnalyticsView({ tasks }) {
           { label: "AI Breakdowns", value: `${aiBreakdownsGenerated}`, sub: "tasks analysed", color: COLORS.accent },
           { label: "Total Tasks", value: `${totalTasks}`, sub: `${statusCounts.find(s=>s.status==="Done")?.count||0} completed` },
         ].map(c => (
-          <div key={c.label} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+          <div key={c.label} className="stat-card">
             <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>{c.label}</div>
             <div style={{ fontSize: 26, fontWeight: 700, color: c.color || COLORS.accent }}>{c.value}</div>
             <div style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 4 }}>{c.sub}</div>
@@ -1304,7 +1478,7 @@ function SearchBar({ tasks, onSelect, onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "80px 20px 20px" }}
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: COLORS.surface, borderRadius: 14, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
+      <div style={{ background: COLORS.surface, borderRadius: 18, width: "100%", maxWidth: 560, boxShadow: "0 24px 64px rgba(0,0,0,0.2)", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
           <span style={{ fontSize: 18, color: COLORS.textMuted }}>🔍</span>
           <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)}
@@ -1548,21 +1722,60 @@ function CalendarView({ tasks, onEdit }) {
         })}
       </div>
 
-      {unscheduled.length > 0 && (
-        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 12 }}>
-            Unscheduled ({unscheduled.length})
+      {/* Upcoming & Unscheduled row */}
+      <div style={{ display: "grid", gridTemplateColumns: unscheduled.length > 0 ? "1fr 1fr" : "1fr", gap: 16 }}>
+        {/* Upcoming this week summary */}
+        <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 14 }}>
+            📋 This Week at a Glance
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {unscheduled.map(t => (
-              <div key={t.id} onClick={() => onEdit(t)}
-                style={{ background: PRIORITY_CONFIG[t.priority].dim, border: `1px solid ${PRIORITY_CONFIG[t.priority].color}40`, borderRadius: 7, padding: "5px 10px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: PRIORITY_CONFIG[t.priority].color }}>
-                {t.isFrog ? "🐸 " : ""}{t.title}
+          {weekDays.map(day => {
+            const ds = dateStr(day);
+            const dayTasks = tasks.filter(t => t.due === ds);
+            if (!dayTasks.length) return null;
+            return (
+              <div key={ds} style={{ display: "flex", gap: 12, paddingBottom: 10, marginBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>
+                <div style={{ flexShrink: 0, textAlign: "center", width: 36 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: ds === todayStr ? COLORS.accent : COLORS.textMuted, textTransform: "uppercase" }}>{day.toLocaleDateString("en-GB", { weekday: "short" })}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: ds === todayStr ? COLORS.accent : COLORS.text, lineHeight: 1.2 }}>{day.getDate()}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  {dayTasks.slice(0,3).map(t => (
+                    <div key={t.id} onClick={() => onEdit(t)} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, cursor: "pointer" }}>
+                      <div style={{ width: 3, height: 3, borderRadius: "50%", background: t.isFrog ? COLORS.frog : PRIORITY_CONFIG[t.priority].color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: t.status === "Done" ? 400 : 600, color: t.status === "Done" ? COLORS.textMuted : COLORS.text, textDecoration: t.status === "Done" ? "line-through" : "none" }}>{t.title}</span>
+                    </div>
+                  ))}
+                  {dayTasks.length > 3 && <div style={{ fontSize: 11, color: COLORS.textMuted }}>+{dayTasks.length - 3} more</div>}
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          }).filter(Boolean)}
+          {weekDays.every(d => !tasks.filter(t => t.due === dateStr(d)).length) && (
+            <div style={{ fontSize: 13, color: COLORS.textMuted, textAlign: "center", padding: "16px 0" }}>Nothing scheduled this week</div>
+          )}
         </div>
-      )}
+
+        {unscheduled.length > 0 && (
+          <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 20 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 14 }}>
+              📌 Unscheduled ({unscheduled.length})
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {unscheduled.map(t => (
+                <div key={t.id} onClick={() => onEdit(t)}
+                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: COLORS.surface2, border: `1px solid ${COLORS.border}`, borderRadius: 8, cursor: "pointer", transition: "all 0.15s" }}>
+                  <div style={{ width: 3, height: 24, borderRadius: 2, background: t.isFrog ? COLORS.frog : PRIORITY_CONFIG[t.priority].color, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.isFrog ? "🐸 " : ""}{t.title}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textMuted, marginTop: 1 }}>{t.priority} · {t.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2373,8 +2586,8 @@ function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveU
 
 function Section({ title, children }) {
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 20, marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${COLORS.border}` }}>{title}</div>
+    <div className="section-card">
+      <div className="section-card-title">{title}</div>
       {children}
     </div>
   );
@@ -2517,44 +2730,28 @@ function OnboardingModal({ onComplete }) {
 function GreetingBanner({ user, tasks }) {
   const todayStr = today();
   const dueTodayCount = tasks.filter(t => t.due === todayStr && t.status !== "Done").length;
-  const totalActive = tasks.filter(t => t.status !== "Done").length;
-
+  const completedToday = tasks.filter(t => t.completedAt && t.completedAt.startsWith(todayStr)).length;
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
-  const dayName = new Date().toLocaleDateString("en-GB", { weekday: "long" });
-  const dateStr = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long" });
-
-  const happyPhrases = [
-    `Happy ${dayName}!`,
-    "Hope you're having a great day!",
-    "Let's make today count!",
-    "You've got this!",
-    "Ready to be productive?",
-  ];
-  const phrase = happyPhrases[new Date().getDate() % happyPhrases.length];
+  const dateStr = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const firstName = cap(user.firstName || user.first_name) || "";
 
   return (
-    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 18px", marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>
-          {timeGreeting}, {cap(user.firstName || user.first_name)}! {phrase}
-        </div>
-        <div style={{ fontSize: 13, color: COLORS.textDim, lineHeight: 1.6 }}>
-          {dateStr} — Here are your tasks for today.
-          {dueTodayCount > 0
-            ? <span style={{ color: COLORS.medium, fontWeight: 600 }}> {dueTodayCount} task{dueTodayCount !== 1 ? "s" : ""} due today.</span>
-            : <span style={{ color: COLORS.frog, fontWeight: 600 }}> Nothing overdue — great work!</span>
-          }
-          {" "}{totalActive > 0 && <span>{totalActive} active task{totalActive !== 1 ? "s" : ""} in progress.</span>}
-        </div>
-        <div style={{ paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 6, justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 600, letterSpacing: 0.5 }}>LOGGED IN AS</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>{cap(user.firstName || user.first_name)} {cap(user.lastName || user.last_name)}</div>
+    <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${COLORS.border}` }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{dateStr}</div>
+          <h1 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(26px, 4vw, 36px)", fontWeight: 400, lineHeight: 1.15, letterSpacing: "-0.5px", color: COLORS.text }}>
+            {timeGreeting}, <em style={{ fontStyle: "italic", color: COLORS.accent }}>{firstName}</em>
+          </h1>
+          <div style={{ fontSize: 14, color: COLORS.textDim, marginTop: 6, lineHeight: 1.5 }}>
+            {dueTodayCount > 0
+              ? <span><span style={{ color: COLORS.medium, fontWeight: 600 }}>{dueTodayCount} task{dueTodayCount !== 1 ? "s" : ""} due today</span>{completedToday > 0 ? ` · ${completedToday} completed` : ""}</span>
+              : <span style={{ color: COLORS.frog, fontWeight: 500 }}>✓ Nothing overdue today{completedToday > 0 ? ` · ${completedToday} completed` : ""}</span>
+            }
           </div>
-          <a href="/auth/logout" style={{ fontSize: 12, color: COLORS.textMuted, textDecoration: "none", background: COLORS.surface3, padding: "3px 10px", borderRadius: 6, border: `1px solid ${COLORS.border}` }}>Sign out</a>
         </div>
+        <a href="/auth/logout" style={{ fontSize: 12, color: COLORS.textMuted, textDecoration: "none", background: COLORS.surface3, padding: "5px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, flexShrink: 0, fontWeight: 500 }}>Sign out</a>
       </div>
     </div>
   );
@@ -2875,39 +3072,88 @@ function App() {
       {confetti && <Confetti onDone={() => setConfetti(false)} />}
       {showFocus && frogTask && <FocusMode task={frogTask} onClose={() => setShowFocus(false)} />}
 
-      {/* Header */}
-      <div style={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, position: "sticky", top: 0, zIndex: 100, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        <div className="header-inner" style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 1200, margin: "0 auto", padding: "0 16px" }}>
+      {/* Header - Redesigned */}
+      <div className="app-header">
+        <div className="header-inner">
           {/* Logo */}
-          <div style={{ flex: 1, minWidth: 80 }}>
-            <div style={{ fontWeight: 800, fontSize: 17, letterSpacing: -0.3, lineHeight: 1.1 }}>Tasklist.uk</div>
-            <div style={{ fontSize: 10, color: COLORS.textMuted, fontWeight: 500, letterSpacing: 0.5 }} className="desktop-only">PART OF THE LAWLESS OPERATING SYSTEM</div>
+          <a href="https://tasklist.uk" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, background: COLORS.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", letterSpacing: 1 }}>tl</div>
+            <span style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, letterSpacing: -0.3 }} className="desktop-only">Tasklist.uk</span>
+          </a>
+
+          {/* View toggle - pill - centred */}
+          <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+            <div className="view-toggle desktop-only">
+              {views.map(([v, label]) => (
+                <button key={v} onClick={() => setView(v)} style={{
+                  background: view===v ? COLORS.surface : "transparent",
+                  color: view===v ? COLORS.text : COLORS.textMuted,
+                  fontWeight: view===v ? 600 : 500,
+                  boxShadow: view===v ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                  transition: "all 0.15s"
+                }}>{label}</button>
+              ))}
+            </div>
           </div>
 
-          {/* Desktop view toggle */}
-          <div className="view-toggle desktop-only">
-            {views.map(([v, label]) => (
-              <button key={v} onClick={() => setView(v)} style={{ background: view===v ? COLORS.surface : "transparent", color: view===v ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 12px", fontSize: 13, fontWeight: 500, boxShadow: view===v ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}>{label}</button>
-            ))}
-          </div>
-
-          {/* Desktop actions */}
-          <div className="desktop-only" style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <button onClick={undo} disabled={!history.length} title="Undo (Ctrl+Z)" style={{ background: COLORS.surface3, color: history.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: history.length ? 1 : 0.4 }}>↩</button>
-            <button onClick={redo} disabled={!future.length} title="Redo (Ctrl+Y)" style={{ background: COLORS.surface3, color: future.length ? COLORS.text : COLORS.textMuted, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}`, opacity: future.length ? 1 : 0.4 }}>↪</button>
-            {frogTask && <button onClick={() => setShowFocus(true)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 8, padding: "7px 12px", fontSize: 13, border: `1px solid ${COLORS.accent}30`, fontWeight: 600 }}>🎯 Focus</button>}
-            <button onClick={() => setShowDailyPlan(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>🤖 Plan</button>
-            <button onClick={() => setShowJournal(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>📝</button>
-            <button onClick={() => setShowDaily(true)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>Daily</button>
-          </div>
-
-          {/* Always-visible actions */}
+          {/* Right actions */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <button onClick={() => setShowSearch(true)} style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 10px", fontSize: 15, border: `1px solid ${COLORS.border}` }}>🔍</button>
-            <button onClick={() => setView("settings")} className="desktop-only" title="Settings" style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "7px 10px", border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            {/* Undo/redo */}
+            <div className="desktop-only" style={{ display: "flex", gap: 3, marginRight: 4 }}>
+              <button onClick={undo} disabled={!history.length} title="Undo (Ctrl+Z)"
+                style={{ background: history.length ? COLORS.surface3 : "transparent", color: history.length ? COLORS.text : COLORS.border, border: `1px solid ${history.length ? COLORS.border : "transparent"}`, padding: "5px 10px", fontSize: 13, borderRadius: 7, opacity: history.length ? 1 : 0.3, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
+                <span style={{ fontSize: 14 }}>↩</span>
+                <span style={{ fontSize: 11 }}>Undo</span>
               </button>
-            <button onClick={() => setShowNew(true)} style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 14px", fontSize: 13, fontWeight: 700 }}>+ New</button>
+              <button onClick={redo} disabled={!future.length} title="Redo (Ctrl+Y)"
+                style={{ background: future.length ? COLORS.surface3 : "transparent", color: future.length ? COLORS.text : COLORS.border, border: `1px solid ${future.length ? COLORS.border : "transparent"}`, padding: "5px 10px", fontSize: 13, borderRadius: 7, opacity: future.length ? 1 : 0.3, transition: "all 0.15s", display: "flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
+                <span style={{ fontSize: 14 }}>↪</span>
+                <span style={{ fontSize: 11 }}>Redo</span>
+              </button>
+            </div>
+
+            {/* AI tools */}
+            <div className="desktop-only" style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              {frogTask && (
+                <button onClick={() => setShowFocus(true)}
+                  style={{ background: COLORS.frogDim, color: COLORS.frog, borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, border: `1px solid ${COLORS.frogBorder}`, display: "flex", alignItems: "center", gap: 5 }}>
+                  🎯 <span>Focus</span>
+                </button>
+              )}
+              <button onClick={() => setShowDailyPlan(true)}
+                style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 5 }}>
+                🤖 <span>Plan</span>
+              </button>
+              <button onClick={() => setShowJournal(true)}
+                style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${COLORS.border}` }}>
+                📝
+              </button>
+              <button onClick={() => setShowDaily(true)}
+                style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 600, border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Daily</span>
+              </button>
+            </div>
+
+            {/* Search */}
+            <button onClick={() => setShowSearch(true)}
+              style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "6px 10px", fontSize: 14, border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 6 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <span className="desktop-only" style={{ fontSize: 12, fontWeight: 500 }}>Search</span>
+            </button>
+
+            {/* Settings */}
+            <button onClick={() => setView("settings")} className="desktop-only"
+              style={{ background: COLORS.surface3, color: COLORS.textMuted, borderRadius: 8, padding: "6px 10px", border: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+
+            {/* New task */}
+            <button onClick={() => setShowNew(true)}
+              style={{ background: COLORS.accent, color: "#fff", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, boxShadow: "0 2px 8px rgba(79,70,229,0.3)" }}>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+              <span className="desktop-only">New task</span>
+            </button>
           </div>
         </div>
       </div>
@@ -2934,55 +3180,79 @@ function App() {
 
         {/* Filter bar — due date + project */}
         {view === "board" && (
-          <div style={{ marginBottom: 14 }}>
-            {/* Due date filters */}
-            <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
               {[
-                { key: null, label: "All dates" },
+                { key: null, label: "All" },
                 { key: "today", label: "Today" },
-                { key: "week", label: "Next 7 days" },
-                { key: "next_week", label: "Next week" },
+                { key: "week", label: "This week" },
                 { key: "overdue", label: "Overdue" },
                 { key: "no_date", label: "No date" },
               ].map(({ key, label }) => (
                 <button key={String(key)} onClick={() => setDueDateFilter(key)}
-                  style={{ background: dueDateFilter === key ? (key === "overdue" ? COLORS.high : COLORS.accent) : COLORS.surface3, color: dueDateFilter === key ? "#fff" : COLORS.textMuted, borderRadius: 20, padding: "4px 11px", fontSize: 12, fontWeight: 600, border: `1px solid ${dueDateFilter === key ? "transparent" : COLORS.border}` }}>
+                  style={{
+                    background: dueDateFilter === key ? (key === "overdue" ? COLORS.high : COLORS.accent) : COLORS.surface,
+                    color: dueDateFilter === key ? "#fff" : COLORS.textMuted,
+                    borderRadius: 100, padding: "5px 13px", fontSize: 12, fontWeight: 600,
+                    border: `1px solid ${dueDateFilter === key ? "transparent" : COLORS.border}`,
+                    transition: "all 0.15s"
+                  }}>
                   {label}
                 </button>
               ))}
+              {projects.length > 0 && (
+                <>
+                  <div style={{ width: 1, height: 20, background: COLORS.border, margin: "0 4px" }} />
+                  {projects.map(p => {
+                    const c = getProjectColor(p.colorId);
+                    const active = projectFilter === p.id;
+                    return (
+                      <button key={p.id} onClick={() => setProjectFilter(active ? null : p.id)}
+                        style={{ background: active ? c.text : c.bg, color: active ? "#fff" : c.text, borderRadius: 100, padding: "5px 13px", fontSize: 12, fontWeight: 600, border: `1px solid ${active ? c.text : c.border}`, transition: "all 0.15s" }}>
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+              <button onClick={() => setView("settings")}
+                style={{ background: "none", color: COLORS.textMuted, borderRadius: 100, padding: "5px 11px", fontSize: 12, border: `1px dashed ${COLORS.border}`, marginLeft: 2 }}>
+                + Project
+              </button>
             </div>
-            {/* Project filters */}
-            {projects.length > 0 && (
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
-                <button onClick={() => setProjectFilter(null)} style={{ background: !projectFilter ? COLORS.accent : COLORS.surface3, color: !projectFilter ? "#fff" : COLORS.textMuted, borderRadius: 20, padding: "4px 11px", fontSize: 12, fontWeight: 600, border: `1px solid ${!projectFilter ? COLORS.accent : COLORS.border}` }}>All projects</button>
-                {projects.map(p => {
-                  const c = getProjectColor(p.colorId);
-                  const active = projectFilter === p.id;
-                  return (
-                    <button key={p.id} onClick={() => setProjectFilter(active ? null : p.id)}
-                      style={{ background: active ? c.text : c.bg, color: active ? "#fff" : c.text, borderRadius: 20, padding: "4px 11px", fontSize: 12, fontWeight: 600, border: `1px solid ${c.border}` }}>
-                      {p.name}
-                    </button>
-                  );
-                })}
-                <button onClick={() => setView("settings")} style={{ background: "none", color: COLORS.textMuted, borderRadius: 20, padding: "4px 10px", fontSize: 12, border: `1px dashed ${COLORS.border}` }}>+ Projects</button>
-              </div>
-            )}
-            {projects.length === 0 && (
-              <button onClick={() => setView("settings")} style={{ background: "none", color: COLORS.textMuted, borderRadius: 20, padding: "4px 12px", fontSize: 12, border: `1px dashed ${COLORS.border}` }}>+ Add project</button>
-            )}
           </div>
         )}
 
         {frogTask && view === "board" && (
-          <div style={{ background: COLORS.frogDim, border: `1px solid ${COLORS.frogBorder}`, borderRadius: 10, padding: "12px 18px", display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 22 }}>🐸</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: COLORS.frog, fontWeight: 700, letterSpacing: 0.6, marginBottom: 2, textTransform: "uppercase" }}>Eat the Frog — Do this first</div>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>{frogTask.title}</div>
+          <div style={{
+            background: COLORS.text,
+            borderRadius: 14,
+            padding: "18px 24px",
+            display: "flex", alignItems: "center", gap: 16,
+            marginBottom: 24, flexWrap: "wrap",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.12)"
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: "rgba(134,239,172,0.15)",
+              border: "1px solid rgba(134,239,172,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 20, flexShrink: 0
+            }}>🐸</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, color: "#86efac", fontWeight: 700, letterSpacing: 1.2, marginBottom: 3, textTransform: "uppercase" }}>Eat the Frog — Priority task</div>
+              <div style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 18, color: "white", letterSpacing: "-0.3px", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{frogTask.title}</div>
             </div>
-            {frogTask.aiBreakdown?.steps?.length > 0 && <div style={{ fontSize: 11, color: COLORS.frogDark, fontWeight: 600, background: COLORS.surface, borderRadius: 6, padding: "3px 10px", border: `1px solid ${COLORS.frogBorder}` }}>✨ {frogTask.aiBreakdown.steps.length} steps</div>}
-            <span style={{ background: COLORS.surface, color: COLORS.textMuted, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontWeight: 500, border: `1px solid ${COLORS.border}` }}>{frogTask.status}</span>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+              {frogTask.aiBreakdown?.steps?.length > 0 && (
+                <span style={{ fontSize: 11, color: "#86efac", fontWeight: 600, background: "rgba(134,239,172,0.1)", borderRadius: 6, padding: "4px 10px", border: "1px solid rgba(134,239,172,0.2)" }}>
+                  ✨ {frogTask.aiBreakdown.steps.length} steps
+                </span>
+              )}
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", background: "rgba(255,255,255,0.06)", borderRadius: 6, padding: "4px 10px", border: "1px solid rgba(255,255,255,0.08)", fontWeight: 500 }}>
+                {frogTask.status}
+              </span>
+            </div>
           </div>
         )}
 
@@ -2994,11 +3264,14 @@ function App() {
                 <div key={col}
                   onDragOver={e => { e.preventDefault(); setDragOver(col); }}
                   onDrop={e => { e.preventDefault(); handleDrop(null, col); }}
-                  style={{ background: dragOver===col ? COLORS.surface3 : "transparent", borderRadius: 10, transition: "background 0.15s", minHeight: 200, border: dragOver===col ? `2px dashed ${COLORS.accent}40` : "2px solid transparent" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: colDotColor[col] }} />
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{col}</span>
-                    <span style={{ background: COLORS.surface3, color: COLORS.textMuted, fontSize: 11, padding: "1px 7px", borderRadius: 10, border: `1px solid ${COLORS.border}`, fontWeight: 500 }}>{colTasks.length}</span>
+                  className={dragOver===col ? "drop-zone-active" : ""}
+                  style={{ borderRadius: 12, transition: "all 0.15s", minHeight: 200, padding: dragOver===col ? "8px" : "0" }}>
+                  <div className="col-header">
+                    <div className="col-status-line" style={{ background: colDotColor[col] }} />
+                    <span style={{ fontWeight: 700, fontSize: 13, letterSpacing: "-0.1px" }}>{col}</span>
+                    <span style={{ background: COLORS.surface3, color: COLORS.textMuted, fontSize: 11, padding: "2px 8px", borderRadius: 100, border: `1px solid ${COLORS.border}`, fontWeight: 600, marginLeft: 2 }}>{colTasks.length}</span>
+                    <div style={{ flex: 1 }} />
+                    <button onClick={() => { setShowNew(true); }} style={{ background: "none", color: COLORS.textMuted, fontSize: 16, padding: "0 4px", opacity: 0.5, lineHeight: 1 }} title="Add task">+</button>
                   </div>
                   {colTasks.map(t => (
                     <TaskCard key={t.id} task={t} projects={projects} onEdit={setEditingTask} onDelete={deleteTask} onFrog={toggleFrog} onStatusChange={setStatus} onSaveBreakdown={saveBreakdown}
@@ -3006,7 +3279,13 @@ function App() {
                       onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
                       onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }} />
                   ))}
-                  {colTasks.length === 0 && <div style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: 24, textAlign: "center", color: COLORS.textMuted, fontSize: 13 }}>Drop tasks here</div>}
+                  {colTasks.length === 0 && (
+                    <div style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: "28px 16px", textAlign: "center", color: COLORS.textMuted, fontSize: 13 }}>
+                      <div style={{ fontSize: 20, marginBottom: 6, opacity: 0.4 }}>+</div>
+                      <div style={{ fontWeight: 500 }}>Drop here or</div>
+                      <button onClick={() => setShowNew(true)} style={{ background: "none", color: COLORS.accent, fontSize: 13, fontWeight: 600, marginTop: 2, textDecoration: "underline" }}>add a task</button>
+                    </div>
+                  )}
                 </div>
               );
             })}
