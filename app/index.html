@@ -83,10 +83,14 @@
   <script>
     // Apply theme before React renders to avoid flash
     (function() {
+      // Force dark background immediately to prevent white safe-area flash on iOS
+      document.documentElement.style.background = '#0f0f14';
+      document.documentElement.style.setProperty('--safe-bg', '#0f0f14');
       // Show login overlay immediately while auth check happens
       document.addEventListener('DOMContentLoaded', function() {
         const overlay = document.getElementById('login-overlay');
         if (overlay) overlay.style.display = 'flex';
+        document.body.style.background = '#0f0f14';
       });
       const t = localStorage.getItem("vtm_theme_v1") || "light";
       document.body.style.background = t === "dark" ? "#0f0f14" : "#f4f4f6";
@@ -155,6 +159,7 @@ const SAMPLE_TASKS = [
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: #0f0f14; }
   body { min-height: 100dvh;background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'DM Sans', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: ${COLORS.surface2}; }
