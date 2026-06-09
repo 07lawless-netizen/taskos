@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#4f46e5" />
   <title>Tasklist.uk — Task Manager &amp; Wellbeing Tracker</title>
   <meta name="description" content="Free, privacy-first task manager with AI-powered breakdowns, wellbeing tracking, and the Eat the Frog productivity method. No account required — your data stays in your browser." />
   <meta property="og:title" content="Tasklist.uk — Task Manager &amp; Wellbeing Tracker" />
@@ -146,7 +149,7 @@ const SAMPLE_TASKS = [
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'DM Sans', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  body { min-height: 100dvh;background: ${COLORS.bg}; color: ${COLORS.text}; font-family: 'DM Sans', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: ${COLORS.surface2}; }
   ::-webkit-scrollbar-thumb { background: ${COLORS.border}; border-radius: 3px; }
@@ -183,7 +186,7 @@ const css = `
     input, textarea, select { font-size: 16px; }
     .desktop-only { display: none !important; }
     .header-inner { height: 54px; padding: 0 12px; }
-    .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e0e0e6; z-index: 200; padding: 6px 0 env(safe-area-inset-bottom, 6px); box-shadow: 0 -2px 12px rgba(0,0,0,0.06); }
+    .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; border-top: 1px solid #e0e0e6; z-index: 200; padding: 6px 0 max(env(safe-area-inset-bottom), 6px); box-shadow: 0 -2px 12px rgba(0,0,0,0.06); }
     .bottom-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 4px 0; background: none; border: none; cursor: pointer; font-family: inherit; }
     .bottom-nav-item span.icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
     .bottom-nav-item span.label { font-size: 10px; font-weight: 600; letter-spacing: 0.3px; }
@@ -2855,7 +2858,7 @@ function App() {
   const views = [["board","Board"],["calendar","Calendar"],["wellbeing","Wellbeing"],["analytics","Analytics"]];
 
   return (
-    <div style={{ minHeight: "100vh", background: COLORS.bg }}>
+    <div style={{ minHeight: "100dvh", background: COLORS.bg }}>
       <style>{css}</style>
 
       {confetti && <Confetti onDone={() => setConfetti(false)} />}
