@@ -24,6 +24,12 @@
   <style>
     .login-overlay { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 16px; }
     .login-backdrop { position: absolute; inset: 0; background: rgba(15,15,25,0.55); backdrop-filter: blur(18px) brightness(0.45); -webkit-backdrop-filter: blur(18px) brightness(0.45); }
+    @media (max-width: 768px) {
+      .login-overlay {
+        background: #0f0f14;
+        padding: max(env(safe-area-inset-top), 16px) 16px max(env(safe-area-inset-bottom), 16px);
+      }
+    }
     .login-card { position: relative; z-index: 1; background: #ffffff; border-radius: 20px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06); overflow: hidden; max-height: 92vh; overflow-y: auto; }
     .login-gradient { height: 100px; background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 40%, #818cf8 100%); position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 0; }
     .login-gradient::after { content: ""; position: absolute; bottom: -1px; left: 0; right: 0; height: 32px; background: #ffffff; border-radius: 50% 50% 0 0 / 32px 32px 0 0; }
