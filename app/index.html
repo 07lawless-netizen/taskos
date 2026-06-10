@@ -31,7 +31,7 @@
         padding: max(env(safe-area-inset-top), 16px) 16px max(env(safe-area-inset-bottom), 16px);
       }
     }
-    .login-card { position: relative; z-index: 1; background: #ffffff; border-radius: 20px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06); overflow: hidden; max-height: 92vh; overflow-y: auto; }
+    .login-card { position: relative; z-index: 1; background: #ffffff; border-radius: 20px; max-width: 340px; width: 100%; text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06); overflow: hidden; max-height: 92vh; overflow-y: auto; }
     .login-gradient { height: 100px; background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 40%, #818cf8 100%); position: relative; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 0; }
     .login-gradient::after { content: ""; position: absolute; bottom: -1px; left: 0; right: 0; height: 32px; background: #ffffff; border-radius: 50% 50% 0 0 / 32px 32px 0 0; }
     .login-logo-wrap { position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; background: #ffffff; border-radius: 16px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(79,70,229,0.25); z-index: 2; }
@@ -44,7 +44,7 @@
     .login-feature-icon { font-size: 15px; flex-shrink: 0; }
     .login-feature-text { font-size: 12px; color: #6b6b80; line-height: 1.4; font-family: "DM Sans", system-ui, sans-serif; }
     .login-feature-text strong { color: #1a1a24; font-weight: 600; }
-    .login-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: #ffffff; border: 2px solid #e0e0e6; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #1a1a24; cursor: pointer; text-decoration: none; transition: all 0.2s; width: 100%; font-family: "DM Sans", system-ui, sans-serif; }
+    .login-btn { display: flex; align-items: center; justify-content: center; gap: 10px; background: #ffffff; border: 2px solid #e0e0e6; border-radius: 12px; padding: 14px 24px; font-size: 14px; font-weight: 600; color: #1a1a24; cursor: pointer; text-decoration: none; transition: all 0.2s; width: auto; min-width: 260px; margin: 0 auto; font-family: "DM Sans", system-ui, sans-serif; }
     .login-btn:hover { border-color: #4f46e5; background: #eeedfb; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,70,229,0.15); }
     .login-btn img { width: 18px; height: 18px; }
     .login-footer { margin-top: 16px; font-size: 11px; color: #c0c0cc; line-height: 1.6; font-family: "DM Sans", system-ui, sans-serif; }
@@ -1814,8 +1814,6 @@ function FocusMode({ task, onClose }) {
   ];
 
   const [showSettings, setShowSettings] = useState(false);
-  const [showAllDone, setShowAllDone] = useState(false);
-  const [showArchivedDone, setShowArchivedDone] = useState(false);
   const [preset, setPreset] = useState(0);
   const [workMins, setWorkMins] = useState(25);
   const [breakMins, setBreakMins] = useState(5);
@@ -3035,6 +3033,8 @@ function App() {
   const [showJournal, setShowJournal] = useState(false);
   const [showProjectManager, setShowProjectManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAllDone, setShowAllDone] = useState(false);
+  const [showArchivedDone, setShowArchivedDone] = useState(false);
   const [projectFilter, setProjectFilter] = useState(null);
   const [dueDateFilter, setDueDateFilter] = useState(null);
   const [happinessTask, setHappinessTask] = useState(null);
