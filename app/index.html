@@ -2922,10 +2922,6 @@ function SharedBoardView({ token }) {
   const frogTask = tasks.find(t => t.isFrog);
   const name = data.user ? cap(data.user.first_name) + "'s" : "Shared";
 
-  // Check if this is a share URL
-  const shareMatch = window.location.pathname.match(/^\/share\/([a-f0-9]{32})$/);
-  if (shareMatch) return <SharedBoardView token={shareMatch[1]} />;
-
   return (
     <div style={{ minHeight: "100dvh", background: COLORS.bg }}>
       <style>{`
@@ -3323,10 +3319,6 @@ function App() {
   const colDotColor = { "To Do": COLORS.textMuted, "In Progress": COLORS.medium, "Done": COLORS.frog };
   const views = [["board","Board"],["calendar","Calendar"],["wellbeing","Wellbeing"],["analytics","Analytics"]];
 
-  // Check if this is a share URL
-  const shareMatch = window.location.pathname.match(/^\/share\/([a-f0-9]{32})$/);
-  if (shareMatch) return <SharedBoardView token={shareMatch[1]} />;
-
   return (
     <div style={{ minHeight: "100dvh", background: COLORS.bg }}>
       <style>{css}</style>
@@ -3583,8 +3575,9 @@ function App() {
   );
 }
 
+const shareMatch = window.location.pathname.match(/^\/share\/([a-f0-9]{32})$/);
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(shareMatch ? <SharedBoardView token={shareMatch[1]} /> : <App />);
   </script>
 </body>
 </html>
