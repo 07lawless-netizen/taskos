@@ -1814,6 +1814,8 @@ function FocusMode({ task, onClose }) {
   ];
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showAllDone, setShowAllDone] = useState(false);
+  const [showArchivedDone, setShowArchivedDone] = useState(false);
   const [preset, setPreset] = useState(0);
   const [workMins, setWorkMins] = useState(25);
   const [breakMins, setBreakMins] = useState(5);
@@ -3514,7 +3516,18 @@ function App() {
         {view === "board" && (
           <div className="board-grid">
             {STATUS_COLS.map(col => {
-              const colTasks = filteredTasks.filter(t => t.status === col);
+              const allColTasks = filteredTasks.filter(t => t.status === col);
+              const DONE_CAP = 5;
+              const recentCutoff = daysAgo(6);
+              const recentDone = col === "Done"
+                ? allColTasks.filter(t => t.completedAt && t.completedAt.split("T")[0] >= recentCutoff)
+                : allColTasks;
+              const archivedDone = col === "Done"
+                ? allColTasks.filter(t => !t.completedAt || t.completedAt.split("T")[0] < recentCutoff)
+                : [];
+              const colTasks = col === "Done"
+                ? (showAllDone ? recentDone : recentDone.slice(0, DONE_CAP))
+                : allColTasks;
               return (
                 <div key={col}
                   onDragOver={e => { e.preventDefault(); setDragOver(col); }}
@@ -3541,6 +3554,26 @@ function App() {
                       <button onClick={() => setShowNew(true)} style={{ background: "none", color: COLORS.accent, fontSize: 13, fontWeight: 600, marginTop: 2, textDecoration: "underline" }}>add a task</button>
                     </div>
                   )}
+                {col === "Done" && recentDone.length > DONE_CAP && (
+                  <button onClick={() => setShowAllDone(s => !s)}
+                    style={{ width: "100%", background: "none", color: COLORS.accent, fontSize: 12, fontWeight: 600, padding: "10px 0", borderTop: `1px solid ${COLORS.border}`, textAlign: "center", marginTop: 4 }}>
+                    {showAllDone ? "Show less" : `Show ${recentDone.length - DONE_CAP} more recent`}
+                  </button>
+                )}
+                {col === "Done" && archivedDone.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <button onClick={() => setShowArchivedDone(s => !s)}
+                      style={{ width: "100%", background: COLORS.surface3, color: COLORS.textMuted, fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, border: `1px solid ${COLORS.border}`, textAlign: "center" }}>
+                      {showArchivedDone ? "Hide archived" : `Show archived (${archivedDone.length})`}
+                    </button>
+                    {showArchivedDone && archivedDone.map(t => (
+                      <TaskCard key={t.id} task={t} projects={projects} onEdit={setEditingTask} onDelete={deleteTask} onFrog={toggleFrog} onStatusChange={setStatus} onSaveBreakdown={saveBreakdown}
+                        isDragging={dragging===t.id} onDragStart={() => setDragging(t.id)}
+                        onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
+                        onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }} />
+                    ))}
+                  </div>
+                )}
                 </div>
               );
             })}
