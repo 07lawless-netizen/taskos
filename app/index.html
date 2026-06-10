@@ -2898,15 +2898,10 @@ function SharedBoardView({ token }) {
       });
   }, []);
 
-  if (error) return (
-    <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 28, marginBottom: 8, color: COLORS.text }}>Board not found</h2>
-        <p style={{ color: COLORS.textMuted, fontSize: 15 }}>This link may have been revoked or doesn't exist.</p>
-      </div>
-    </div>
-  );
+  if (error) {
+    window.location.href = '/not-found.html';
+    return null;
+  }
 
   if (!data) return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
