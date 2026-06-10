@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Board not found — Tasklist.uk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><text x='16' y='22' font-family='system-ui,sans-serif' font-weight='700' font-size='14' fill='white' text-anchor='middle' letter-spacing='1.5'>tl</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: #f5f5f3;
+      color: #1c1c1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      background: #ffffff;
+      border-bottom: 1px solid #e2e2de;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 8px;
+      text-decoration: none; color: #1c1c1a;
+    }
+    .nav-logo-mark {
+      width: 30px; height: 30px;
+      background: #4f46e5; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; color: white; letter-spacing: 1px;
+    }
+    .nav-logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e2de;
+      border-radius: 20px;
+      padding: 56px 48px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .icon-wrap {
+      width: 72px; height: 72px;
+      background: #f0f0ed;
+      border: 1px solid #e2e2de;
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 24px;
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 32px;
+      font-weight: 400;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+      color: #1c1c1a;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: #4f46e5;
+    }
+
+    p {
+      font-size: 15px;
+      color: #6b6b65;
+      line-height: 1.65;
+      margin-bottom: 32px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #e2e2de;
+      margin: 0 0 28px;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-primary {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      transition: all 0.15s;
+      box-shadow: 0 2px 10px rgba(79,70,229,0.3);
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: #f0f0ed;
+      color: #6b6b65;
+      border: 1px solid #e2e2de;
+      border-radius: 10px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      cursor: pointer;
+      text-decoration: none;
+      display: block;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover { background: #e8e8e4; color: #1c1c1a; }
+
+    .features {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #6b6b65;
+    }
+    .feature-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #16a34a;
+      flex-shrink: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: #9d9d96;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 40px 24px; border-radius: 16px; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="https://tasklist.uk" class="nav-logo">
+      <div class="nav-logo-mark">tl</div>
+      <span class="nav-logo-text">Tasklist.uk</span>
+    </a>
+  </nav>
+
+  <main>
+    <div class="card">
+      <div class="icon-wrap">🔒</div>
+
+      <h1>Board <em>not found</em></h1>
+      <p>This shared board link has either been revoked by its owner or doesn't exist. The owner can generate a new link from their settings at any time.</p>
+
+      <div class="divider"></div>
+
+      <div class="features">
+        <div class="feature"><div class="feature-dot"></div>Kanban board with drag and drop</div>
+        <div class="feature"><div class="feature-dot"></div>AI-powered task breakdowns via Groq</div>
+        <div class="feature"><div class="feature-dot"></div>Wellbeing tracking and analytics</div>
+        <div class="feature"><div class="feature-dot"></div>Shareable read-only board links</div>
+      </div>
+
+      <div class="actions">
+        <a href="https://app.tasklist.uk" class="btn-primary">Get started free →</a>
+        <a href="https://tasklist.uk" class="btn-secondary">Learn more about Tasklist.uk</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    © 2026 Tasklist.uk · Built by <a href="https://github.com/07lawless-netizen/taskos" style="color:#9d9d96">Daniel Lawless</a>
+  </footer>
+
+</body>
+</html>
