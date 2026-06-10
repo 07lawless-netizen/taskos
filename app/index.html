@@ -2881,7 +2881,7 @@ function SharedBoardView({ token }) {
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
-    fetch('/api/share/' + token)
+    fetch(window.location.origin + '/api/share/' + token)
       .then(r => {
         if (!r.ok) throw new Error('Not found');
         return r.json();
