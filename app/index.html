@@ -87,10 +87,13 @@
       // Force dark background immediately to prevent white safe-area flash on iOS
       document.documentElement.style.background = '#0f0f14';
       document.documentElement.style.setProperty('--safe-bg', '#0f0f14');
-      // Show login overlay immediately while auth check happens
+      // Show login overlay only if not a share link
       document.addEventListener('DOMContentLoaded', function() {
-        const overlay = document.getElementById('login-overlay');
-        if (overlay) overlay.style.display = 'flex';
+        const isShareRoute = /^\/share\/[a-f0-9]{32}$/.test(window.location.pathname);
+        if (!isShareRoute) {
+          const overlay = document.getElementById('login-overlay');
+          if (overlay) overlay.style.display = 'flex';
+        }
         document.body.style.background = '#0f0f14';
       });
       const t = localStorage.getItem("vtm_theme_v1") || "light";
@@ -3041,6 +3044,8 @@ function App() {
 
   // Check auth on load and show/hide login overlay
   useEffect(() => {
+    const isShareRoute = /^\/share\/[a-f0-9]{32}$/.test(window.location.pathname);
+    if (isShareRoute) { setAuthChecked(true); return; }
     fetch('/auth/me', { credentials: 'include' })
       .then(r => r.json())
       .then(user => {
