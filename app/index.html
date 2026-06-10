@@ -3148,7 +3148,7 @@ const api = {
   async getSettings() { const r = await fetch('/api/settings', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
   async saveSettings(s) { await fetch('/api/settings', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) }); },
   async getBookmarks() { const r = await fetch('/api/bookmarks', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
-  async saveBookmark(b) { await fetch('/api/bookmarks', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); },
+  async saveBookmark(b) { const r = await fetch('/api/bookmarks', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.ok ? r.json() : null; },
   async deleteBookmark(id) { await fetch('/api/bookmarks/' + id, { method: 'DELETE', credentials: 'include' }); },
   async fetchMeta(url) { const r = await fetch('/api/fetch-meta?url=' + encodeURIComponent(url), { credentials: 'include' }); if (!r.ok) return {}; return r.json(); },
 };
@@ -3572,13 +3572,18 @@ function App() {
     const newBm = { ...bm, domain };
     setBookmarks(prev => [newBm, ...prev]);
     if (authUser) {
-      try { await api.saveBookmark(newBm); } catch(e) { console.error(e); }
+      try {
+        const saved = await api.saveBookmark(newBm);
+        if (saved && saved.id) {
+          setBookmarks(prev => prev.map(b => b.id === newBm.id ? { ...b, id: saved.id, created_at: saved.created_at } : b));
+        }
+      } catch(e) { console.error(e); }
     }
   }
 
   async function deleteBookmark(id) {
     setBookmarks(prev => prev.filter(b => b.id !== id));
-    if (authUser) {
+    if (authUser && !String(id).startsWith('local-')) {
       try { await api.deleteBookmark(id); } catch(e) { console.error(e); }
     }
   }
