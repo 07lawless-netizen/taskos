@@ -2533,12 +2533,12 @@ function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveU
       {/* Work Hours */}
       <Section title="Work Hours">
         <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 14, lineHeight: 1.6 }}>The end-of-day journal will appear automatically at your work end time.</p>
-        <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 12 }}>
+          <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>START TIME</label>
             <input type="time" value={wStart} onChange={e => setWStart(e.target.value)} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>END TIME</label>
             <input type="time" value={wEnd} onChange={e => setWEnd(e.target.value)} />
           </div>
@@ -2715,12 +2715,12 @@ function OnboardingModal({ onComplete }) {
                 We'll use these to prompt your end-of-day journal at the right time. You can change this later in Settings.
               </p>
             </div>
-            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+              <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>WORK STARTS</label>
                 <input type="time" value={wStart} onChange={e => setWStart(e.target.value)} />
               </div>
-              <div style={{ flex: 1 }}>
+              <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>WORK ENDS</label>
                 <input type="time" value={wEnd} onChange={e => setWEnd(e.target.value)} />
               </div>
