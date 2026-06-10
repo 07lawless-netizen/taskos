@@ -2879,22 +2879,24 @@ function WorkHoursSetupModal({ onSave, onSkip }) {
 function SharedBoardView({ token }) {
   const [data, setData] = React.useState(null);
   const [error, setError] = React.useState(null);
+  const fetched = React.useRef(false);
 
   React.useEffect(() => {
-    fetch(window.location.origin + '/api/share/' + token)
+    if (fetched.current) return;
+    fetched.current = true;
+    fetch('/api/share/' + token, { credentials: 'omit' })
       .then(r => {
         if (!r.ok) throw new Error('Not found');
         return r.json();
       })
       .then(d => {
-        console.log('Share data loaded:', d);
         setData(d);
       })
       .catch(e => {
         console.error('Share error:', e);
         setError(true);
       });
-  }, [token]);
+  }, []);
 
   if (error) return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
