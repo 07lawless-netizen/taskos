@@ -2276,14 +2276,14 @@ Respond with a warm, personal reflection. Acknowledge what they shared, celebrat
               <button onClick={() => setStep("journal")} style={{ background: COLORS.surface3, color: COLORS.textDim, borderRadius: 8, padding: "6px 12px", border: `1px solid ${COLORS.border}` }}>← Back</button>
             </div>
             <p style={{ fontSize: 13, color: COLORS.textDim, marginBottom: 20, lineHeight: 1.6 }}>Set your working hours so the end-of-day journal prompt appears at the right time.</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
-              <div style={{ minWidth: 0 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20, overflow: "hidden" }}>
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>START TIME</label>
-                <input type="time" value={wStart} onChange={e => setWStart(e.target.value)} style={{ width: "100%" }} />
+                <input type="time" value={wStart} onChange={e => setWStart(e.target.value)} style={{ width: "100%", minWidth: 0, fontSize: 15 }} />
               </div>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
                 <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.textMuted, display: "block", marginBottom: 6 }}>END TIME</label>
-                <input type="time" value={wEnd} onChange={e => setWEnd(e.target.value)} style={{ width: "100%" }} />
+                <input type="time" value={wEnd} onChange={e => setWEnd(e.target.value)} style={{ width: "100%", minWidth: 0, fontSize: 15 }} />
               </div>
             </div>
             <button onClick={() => { onSaveWorkHours({ start: wStart, end: wEnd }); setStep("journal"); }}
