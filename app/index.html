@@ -3652,6 +3652,9 @@ function App() {
 
   function handleDrop(targetId, targetStatus) {
     if (!dragging) return;
+    const draggedTask = tasks.find(t => t.id === dragging);
+    const becomingDone = targetStatus === 'Done' && draggedTask?.status !== 'Done';
+    const wasFrog = draggedTask?.isFrog;
     updateTasks(ts => {
       const arr = [...ts];
       const fromIdx = arr.findIndex(t => t.id === dragging);
@@ -3663,6 +3666,10 @@ function App() {
       if (authUser) api.saveTask(task).catch(console.error);
       return arr;
     });
+    if (becomingDone) {
+      if (wasFrog) setTimeout(() => setConfetti(true), 200);
+      if (draggedTask) setTimeout(() => setHappinessTask(draggedTask), wasFrog ? 2000 : 300);
+    }
     setDragging(null); setDragOver(null);
   }
 
