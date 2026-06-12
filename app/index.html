@@ -670,7 +670,10 @@ function WellbeingView({ checkins, tasks, onOpenCheckin }) {
   return (
     <div style={{ padding: "0 0 40px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Wellbeing</h2>
+        <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+            <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(24px, 3.5vw, 34px)", fontWeight: 400, letterSpacing: "-0.5px", lineHeight: 1.15, color: COLORS.text }}>Your <em style={{ fontStyle: "italic", color: COLORS.accent }}>wellbeing</em></h2>
+          </div>
         <button onClick={onOpenCheckin} style={{
           background: todayEntry ? COLORS.frogDim : COLORS.accent,
           color: todayEntry ? COLORS.frog : "#fff",
@@ -679,6 +682,7 @@ function WellbeingView({ checkins, tasks, onOpenCheckin }) {
         }}>
           {todayEntry ? "✓ Checked in today" : "Check in now"}
         </button>
+        </div>
       </div>
 
       {/* Today's snapshot */}
@@ -1314,7 +1318,10 @@ function AnalyticsView({ tasks }) {
 
   return (
     <div style={{ padding: "0 0 40px" }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20 }}>Analytics</h2>
+      <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</div>
+        <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(24px, 3.5vw, 34px)", fontWeight: 400, letterSpacing: "-0.5px", lineHeight: 1.15, color: COLORS.text }}>Your <em style={{ fontStyle: "italic", color: COLORS.accent }}>analytics</em></h2>
+      </div>
       <WeeklySummary tasks={tasks} />
 
       {/* Key stats */}
@@ -1677,7 +1684,7 @@ function CalendarView({ tasks, onEdit }) {
       <div style={{ paddingBottom: 20 }}>
         {/* Mobile header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700 }}>Calendar</h2>
+          <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(24px, 3.5vw, 34px)", fontWeight: 400, letterSpacing: "-0.5px", lineHeight: 1.15, color: COLORS.text }}>Your <em style={{ fontStyle: "italic", color: COLORS.accent }}>calendar</em></h2>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => { setDayOffset(0); setSelectedDay(todayStr); }} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 7, padding: "5px 10px", fontSize: 12, fontWeight: 600 }}>Today</button>
             <button onClick={() => setDayOffset(d => d - 1)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 7, padding: "5px 10px", fontSize: 14, border: `1px solid ${COLORS.border}` }}>←</button>
@@ -1741,7 +1748,7 @@ function CalendarView({ tasks, onEdit }) {
   return (
     <div style={{ paddingBottom: 40 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Calendar</h2>
+        <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(24px, 3.5vw, 34px)", fontWeight: 400, letterSpacing: "-0.5px", lineHeight: 1.15, color: COLORS.text }}>Your <em style={{ fontStyle: "italic", color: COLORS.accent }}>calendar</em></h2>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button onClick={() => setWeekOffset(0)} style={{ background: COLORS.accentDim, color: COLORS.accent, borderRadius: 7, padding: "5px 12px", fontSize: 12, fontWeight: 600, border: `1px solid ${COLORS.accent}30` }}>Today</button>
           <button onClick={() => setWeekOffset(w => w-1)} style={{ background: COLORS.surface3, color: COLORS.text, borderRadius: 7, padding: "5px 10px", fontSize: 13, border: `1px solid ${COLORS.border}` }}>←</button>
@@ -2483,7 +2490,7 @@ function CorrelationAnalysis({ tasks, checkins }) {
 
 
 // ── Settings View ─────────────────────────────────────────────────────────────
-function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveUser, onSaveWorkHours, onSaveProject, onDeleteProject, onClearData, onOpenIE, onShareToken, onShareLoading, onShareCopied, onGenerateShare, onRevokeShare, onCopyShare }) {
+function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveUser, onSaveWorkHours, onSaveProject, onDeleteProject, onClearData, onOpenIE, onShareToken, onShareLoading, onShareCopied, onGenerateShare, onRevokeShare, onCopyShare, onSaveEodSetting }) {
   const [firstName, setFirstName] = useState(user?.firstName || user?.first_name || "");
   const [lastName, setLastName] = useState(user?.lastName || user?.last_name || "");
   const [wStart, setWStart] = useState(workHours?.start || "09:00");
@@ -2521,7 +2528,9 @@ function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveU
 
   return (
     <div style={{ paddingBottom: 40 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24 }}>Settings</h2>
+      <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: `1px solid ${COLORS.border}` }}>
+        <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: "clamp(24px, 3.5vw, 34px)", fontWeight: 400, letterSpacing: "-0.5px", lineHeight: 1.15, color: COLORS.text }}>Your <em style={{ fontStyle: "italic", color: COLORS.accent }}>settings</em></h2>
+      </div>
 
       {/* Appearance */}
       <Section title="Appearance">
@@ -2586,6 +2595,33 @@ function SettingsView({ user, workHours, projects, theme, onToggleTheme, onSaveU
           </div>
         </div>
         <SaveButton onClick={saveHours} saved={saved === "hours"} />
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${COLORS.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text, marginBottom: 2 }}>End-of-day journal prompt</div>
+              <div style={{ fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>Automatically show the journal at your work end time</div>
+            </div>
+            <button
+              onClick={() => onSaveEodSetting(workHours?.showEodJournal !== false ? false : true)}
+              style={{
+                width: 44, height: 24, borderRadius: 100, border: "none", cursor: "pointer",
+                background: workHours?.showEodJournal !== false ? COLORS.accent : COLORS.surface3,
+                position: "relative", transition: "background 0.2s", flexShrink: 0,
+                outline: `2px solid ${workHours?.showEodJournal !== false ? COLORS.accent : COLORS.border}`,
+                outlineOffset: 2,
+              }}>
+              <div style={{
+                width: 18, height: 18, borderRadius: "50%", background: "white",
+                position: "absolute", top: 3,
+                left: workHours?.showEodJournal !== false ? 23 : 3,
+                transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)"
+              }} />
+            </button>
+          </div>
+          <div style={{ marginTop: 8, fontSize: 11, color: workHours?.showEodJournal !== false ? COLORS.frog : COLORS.textMuted, fontWeight: 600 }}>
+            {workHours?.showEodJournal !== false ? "✓ Journal prompt is on" : "Journal prompt is off"}
+          </div>
+        </div>
       </Section>
 
       {/* Projects */}
@@ -3528,6 +3564,7 @@ function App() {
       const lastJournal = localStorage.getItem("vtm_journal_shown");
       if (lastJournal === today()) return; // already shown today
       if (!workHours?.end) return;
+      if (workHours?.showEodJournal === false) return; // user turned it off
       const now = new Date();
       const [eh, em] = workHours.end.split(":").map(Number);
       const endMinutes = eh * 60 + em;
@@ -3629,6 +3666,7 @@ function App() {
   }
   function saveCheckin(entry) { setCheckins(prev => { const filtered = prev.filter(c => c.date !== entry.date); return [...filtered, entry]; }); if (authUser) api.saveCheckin(entry).catch(console.error); }
   function saveWorkHours(wh) { setWorkHours(wh); if (authUser) api.saveSettings({ workHours: wh, theme }).catch(console.error); }
+  function saveEodSetting(val) { const wh = { ...workHours, showEodJournal: val }; setWorkHours(wh); if (authUser) api.saveSettings({ workHours: wh, theme }).catch(console.error); }
   function updateTimeSpent(taskId, seconds) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, timeSpent: seconds } : t)); }
 
   async function addBookmark(bm) {
@@ -4028,7 +4066,7 @@ function App() {
         {view === "wellbeing" && <WellbeingView checkins={checkins} tasks={tasks} onOpenCheckin={() => setShowCheckin(true)} />}
         {view === "analytics" && <AnalyticsView tasks={tasks} />}
         {view === "bookmarks" && <BookmarksView bookmarks={bookmarks} onAdd={addBookmark} onDelete={deleteBookmark} onToggleStar={toggleBookmarkStar} onToggleRead={toggleBookmarkRead} setEditingBookmark={setEditingBookmark} />}
-        {view === "settings" && <SettingsView user={authUser || user} workHours={workHours} projects={projects} theme={theme} onToggleTheme={toggleTheme} onSaveUser={saveUser} onSaveWorkHours={saveWorkHours} onSaveProject={saveProject} onDeleteProject={deleteProject} onClearData={clearData} onOpenIE={() => setShowIE(true)} onShareToken={shareToken} onShareLoading={shareLoading} onShareCopied={shareCopied} onGenerateShare={generateShare} onRevokeShare={revokeShare} onCopyShare={copyShare} />}
+        {view === "settings" && <SettingsView user={authUser || user} workHours={workHours} projects={projects} theme={theme} onToggleTheme={toggleTheme} onSaveUser={saveUser} onSaveWorkHours={saveWorkHours} onSaveProject={saveProject} onDeleteProject={deleteProject} onClearData={clearData} onOpenIE={() => setShowIE(true)} onShareToken={shareToken} onShareLoading={shareLoading} onShareCopied={shareCopied} onGenerateShare={generateShare} onRevokeShare={revokeShare} onCopyShare={copyShare} onSaveEodSetting={saveEodSetting} />}
       </div>
 
       {!authUser && !user && <OnboardingModal onComplete={({ user, workHours: wh }) => {
