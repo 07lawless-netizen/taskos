@@ -3467,21 +3467,11 @@ function SharedBoardView({ token }) {
   const name = data.user ? cap(data.user.first_name) + "'s" : "Shared";
   const isMultiWorkspace = !data.workspaceName;
 
-  // Get unique workspaces from tasks when showing all
-  const wsGroups = React.useMemo(() => {
-    if (!isMultiWorkspace) return null;
-    const map = {};
-    allTasks.forEach(t => {
-      const wsId = t.workspace_id || 'none';
-      if (!map[wsId]) map[wsId] = { id: wsId, tasks: [] };
-      map[wsId].tasks.push(t);
-    });
-    return Object.values(map);
-  }, [allTasks, isMultiWorkspace]);
-
+  // Use workspace list from server, filter tasks by active tab
+  const wsGroups = isMultiWorkspace ? (data.workspaces || []) : null;
   const currentWsId = activeWsId || (wsGroups?.[0]?.id);
   const tasks = isMultiWorkspace
-    ? (wsGroups?.find(w => w.id === currentWsId)?.tasks || [])
+    ? allTasks.filter(t => t.workspace_id === currentWsId)
     : allTasks;
 
   const frogTask = tasks.find(t => t.isFrog);
@@ -3571,14 +3561,14 @@ function SharedBoardView({ token }) {
         {/* Workspace tabs — shown when sharing all workspaces */}
         {isMultiWorkspace && wsGroups && wsGroups.length > 1 && (
           <div style={{ display: "flex", gap: 6, marginBottom: 24, flexWrap: "wrap" }}>
-            {wsGroups.map((ws, i) => {
+            {wsGroups.map(ws => {
               const isActive = ws.id === currentWsId;
-              const wsTaskCount = ws.tasks.filter(t => t.status !== "Done").length;
+              const wsTaskCount = allTasks.filter(t => t.workspace_id === ws.id && t.status !== "Done").length;
               return (
                 <button key={ws.id} onClick={() => setActiveWsId(ws.id)}
                   style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 16px", borderRadius: 10, border: `1.5px solid ${isActive ? COLORS.accent : COLORS.border}`, background: isActive ? COLORS.accentDim : COLORS.surface, color: isActive ? COLORS.accent : COLORS.textDim, fontFamily: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}>
-                  <span style={{ fontSize: 16 }}>📋</span>
-                  <span>Workspace {i + 1}</span>
+                  <span style={{ fontSize: 16 }}>{ws.icon || '📋'}</span>
+                  <span>{ws.name}</span>
                   <span style={{ fontSize: 11, background: isActive ? COLORS.accent+'20' : COLORS.surface3, color: isActive ? COLORS.accent : COLORS.textMuted, borderRadius: 100, padding: "1px 7px", fontWeight: 700 }}>{wsTaskCount}</span>
                 </button>
               );
