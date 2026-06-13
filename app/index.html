@@ -3241,21 +3241,125 @@ function BookmarksView({ bookmarks, onAdd, onDelete, onToggleStar, onToggleRead,
   );
 }
 
+// ── WorkspaceSwitcher ─────────────────────────────────────────────────────────
+const WORKSPACE_ICONS = ['📋','💼','🏠','🚀','🎯','💡','🔬','🎨','📚','🏋️','🌱','⚡'];
+const WORKSPACE_COLORS = ['#4f46e5','#0ea5e9','#16a34a','#dc2626','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#6366f1'];
+
+function WorkspaceSwitcher({ workspaces, activeWorkspace, onSwitch, onCreate, onDelete, onClose }) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newIcon, setNewIcon] = useState('📋');
+  const [newColor, setNewColor] = useState('#4f46e5');
+
+  function handleCreate() {
+    if (!newName.trim()) return;
+    onCreate(newName.trim(), newIcon, newColor);
+    setNewName(''); setNewIcon('📋'); setNewColor('#4f46e5');
+    setCreating(false);
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.3)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20, backdropFilter:'blur(6px)' }}
+      onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{ background:COLORS.surface, borderRadius:18, width:'100%', maxWidth:420, boxShadow:'0 24px 60px rgba(0,0,0,0.15)', border:`1px solid ${COLORS.border}`, overflow:'hidden' }}>
+
+        {/* Header */}
+        <div style={{ padding:'20px 20px 14px', borderBottom:`1px solid ${COLORS.border}`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:16, fontWeight:700, color:COLORS.text }}>Workspaces</div>
+            <div style={{ fontSize:12, color:COLORS.textMuted, marginTop:2 }}>Switch between your spaces</div>
+          </div>
+          <button onClick={onClose} style={{ background:COLORS.surface3, border:`1px solid ${COLORS.border}`, borderRadius:8, padding:'6px 12px', fontFamily:'inherit', fontSize:13, color:COLORS.textDim, cursor:'pointer' }}>✕</button>
+        </div>
+
+        {/* Workspace list */}
+        <div style={{ padding:'10px 12px' }}>
+          {workspaces.map(ws => {
+            const isActive = ws.id === activeWorkspace?.id;
+            return (
+              <div key={ws.id} onClick={() => onSwitch(ws)}
+                style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', borderRadius:10, cursor:'pointer', background:isActive ? COLORS.accentDim : 'transparent', marginBottom:4, transition:'background 0.12s', border:`1px solid ${isActive ? COLORS.accent+'40' : 'transparent'}` }}
+                onMouseEnter={e => { if(!isActive) e.currentTarget.style.background=COLORS.surface2; }}
+                onMouseLeave={e => { if(!isActive) e.currentTarget.style.background='transparent'; }}>
+                <div style={{ width:38, height:38, borderRadius:10, background:ws.color+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0, border:`1px solid ${ws.color}30` }}>
+                  {ws.icon}
+                </div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:14, fontWeight:600, color:isActive ? COLORS.accent : COLORS.text }}>{ws.name}</div>
+                  {isActive && <div style={{ fontSize:11, color:COLORS.accent, fontWeight:600 }}>Active</div>}
+                </div>
+                {isActive && <div style={{ width:8, height:8, borderRadius:'50%', background:COLORS.accent }}/>}
+                {!isActive && workspaces.length > 1 && (
+                  <button onClick={e => { e.stopPropagation(); onDelete(ws.id); }}
+                    style={{ background:'none', border:'none', color:COLORS.textMuted, cursor:'pointer', padding:'4px', borderRadius:6, fontSize:13, opacity:0 }}
+                    onMouseEnter={e => e.currentTarget.style.opacity=1}
+                    onMouseLeave={e => e.currentTarget.style.opacity=0}>✕</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Create new */}
+        <div style={{ padding:'0 12px 14px' }}>
+          {!creating ? (
+            <button onClick={() => setCreating(true)}
+              style={{ width:'100%', padding:'10px', borderRadius:10, border:`1.5px dashed ${COLORS.border}`, background:'transparent', color:COLORS.textMuted, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, transition:'all 0.12s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor=COLORS.accent; e.currentTarget.style.color=COLORS.accent; e.currentTarget.style.background=COLORS.accentDim; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor=COLORS.border; e.currentTarget.style.color=COLORS.textMuted; e.currentTarget.style.background='transparent'; }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New workspace
+            </button>
+          ) : (
+            <div style={{ background:COLORS.surface2, borderRadius:12, padding:14, border:`1px solid ${COLORS.border}` }}>
+              <div style={{ fontSize:11, fontWeight:700, color:COLORS.textMuted, textTransform:'uppercase', letterSpacing:0.5, marginBottom:10 }}>New workspace</div>
+              <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key==='Enter' && handleCreate()}
+                placeholder="Workspace name…" autoFocus
+                style={{ width:'100%', padding:'9px 12px', background:COLORS.surface, border:`1px solid ${COLORS.border}`, borderRadius:8, fontFamily:'inherit', fontSize:14, color:COLORS.text, outline:'none', marginBottom:10 }} />
+              <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:10 }}>
+                {WORKSPACE_ICONS.map(icon => (
+                  <button key={icon} onClick={() => setNewIcon(icon)}
+                    style={{ width:32, height:32, borderRadius:8, border:`2px solid ${newIcon===icon ? COLORS.accent : COLORS.border}`, background:newIcon===icon ? COLORS.accentDim : COLORS.surface, cursor:'pointer', fontSize:16 }}>
+                    {icon}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap', marginBottom:10 }}>
+                {WORKSPACE_COLORS.map(col => (
+                  <button key={col} onClick={() => setNewColor(col)}
+                    style={{ width:24, height:24, borderRadius:'50%', background:col, border:`3px solid ${newColor===col ? COLORS.text : 'transparent'}`, cursor:'pointer', transition:'border 0.12s' }} />
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:8' }}>
+                <button onClick={() => setCreating(false)} style={{ flex:1, padding:'8px', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:600, cursor:'pointer', background:COLORS.surface3, color:COLORS.textDim, border:`1px solid ${COLORS.border}` }}>Cancel</button>
+                <button onClick={handleCreate} disabled={!newName.trim()} style={{ flex:2, padding:'8px', borderRadius:8, fontFamily:'inherit', fontSize:13, fontWeight:700, cursor:'pointer', background:newName.trim()?COLORS.accent:COLORS.surface3, color:newName.trim()?'#fff':COLORS.textMuted, border:'none' }}>Create</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ────────────────────────────────────────────────────────────────────────
 
 // ── API Layer ─────────────────────────────────────────────────────────────────
 const api = {
-  async getTasks() { const r = await fetch('/api/tasks', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
+  async getTasks(wsId) { const r = await fetch('/api/tasks?workspace_id=' + wsId, { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
+  async getWorkspaces() { const r = await fetch('/api/workspaces', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
+  async saveWorkspace(w) { const method = w.id ? 'PUT' : 'POST'; const url = w.id ? '/api/workspaces/'+w.id : '/api/workspaces'; const r = await fetch(url, { method, credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(w) }); return r.ok ? r.json() : null; },
+  async deleteWorkspace(id) { await fetch('/api/workspaces/'+id, { method:'DELETE', credentials:'include' }); },
   async saveTask(task) { await fetch('/api/tasks', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(task) }); },
   async deleteTask(id) { await fetch('/api/tasks/' + id, { method: 'DELETE', credentials: 'include' }); },
   async getCheckins() { const r = await fetch('/api/checkins', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
   async saveCheckin(c) { await fetch('/api/checkins', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) }); },
-  async getProjects() { const r = await fetch('/api/projects', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
+  async getProjects(wsId) { const r = await fetch('/api/projects?workspace_id=' + wsId, { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
   async saveProject(p) { await fetch('/api/projects', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }); },
   async deleteProject(id) { await fetch('/api/projects/' + id, { method: 'DELETE', credentials: 'include' }); },
   async getSettings() { const r = await fetch('/api/settings', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
   async saveSettings(s) { await fetch('/api/settings', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) }); },
-  async getBookmarks() { const r = await fetch('/api/bookmarks', { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
+  async getBookmarks(wsId) { const r = await fetch('/api/bookmarks?workspace_id=' + wsId, { credentials: 'include' }); if (!r.ok) return null; return r.json(); },
   async saveBookmark(b) { const r = await fetch('/api/bookmarks', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.ok ? r.json() : null; },
   async deleteBookmark(id) { await fetch('/api/bookmarks/' + id, { method: 'DELETE', credentials: 'include' }); },
   async fetchMeta(url) { const r = await fetch('/api/fetch-meta?url=' + encodeURIComponent(url), { credentials: 'include' }); if (!r.ok) return {}; return r.json(); },
@@ -3464,6 +3568,11 @@ function App() {
   const [showArchivedDone, setShowArchivedDone] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
   const [editingBookmark, setEditingBookmark] = useState(null);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [activeWorkspace, setActiveWorkspace] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('vtm_workspace') || 'null'); } catch { return null; }
+  });
+  const [showWorkspaceSwitcher, setShowWorkspaceSwitcher] = useState(false);
   const [projectFilter, setProjectFilter] = useState(null);
   const [dueDateFilter, setDueDateFilter] = useState(null);
   const [happinessTask, setHappinessTask] = useState(null);
@@ -3510,8 +3619,20 @@ function App() {
 
   async function loadUserData() {
     try {
+      // Load workspaces first to get active workspace id
+      const workspacesData = await api.getWorkspaces();
+      let activeWs = null;
+      if (workspacesData && workspacesData.length > 0) {
+        setWorkspaces(workspacesData);
+        const savedWsId = localStorage.getItem('vtm_workspace_id');
+        activeWs = workspacesData.find(w => w.id === savedWsId) || workspacesData[0];
+        setActiveWorkspace(activeWs);
+        localStorage.setItem('vtm_workspace_id', activeWs.id);
+      }
+      const wsId = activeWs?.id;
+
       const [tasksData, checkinsData, projectsData, settingsData, bookmarksData] = await Promise.all([
-        api.getTasks(), api.getCheckins(), api.getProjects(), api.getSettings(), api.getBookmarks()
+        api.getTasks(wsId), api.getCheckins(), api.getProjects(wsId), api.getSettings(), api.getBookmarks(wsId)
       ]);
       if (tasksData && tasksData.length > 0) {
         setTasks(tasksData.map(t => ({
@@ -3612,13 +3733,14 @@ function App() {
   function updateTasks(fn) { pushHistory(tasks); setTasks(fn); }
 
   function saveTask(task) {
+    const taskWithWs = { ...task, workspaceId: activeWorkspace?.id };
     updateTasks(ts => {
-      const idx = ts.findIndex(t => t.id === task.id);
-      if (idx >= 0) { const n = [...ts]; n[idx] = task; return n; }
-      return [...ts, task];
+      const idx = ts.findIndex(t => t.id === taskWithWs.id);
+      if (idx >= 0) { const n = [...ts]; n[idx] = taskWithWs; return n; }
+      return [...ts, taskWithWs];
     });
     setEditingTask(null); setShowNew(false);
-    if (authUser) api.saveTask(task).catch(console.error);
+    if (authUser) api.saveTask(taskWithWs).catch(console.error);
   }
 
   function deleteTask(id) { updateTasks(ts => ts.filter(t => t.id !== id)); if (authUser) api.deleteTask(id).catch(console.error); }
@@ -3676,11 +3798,53 @@ function App() {
   function saveCheckin(entry) { setCheckins(prev => { const filtered = prev.filter(c => c.date !== entry.date); return [...filtered, entry]; }); if (authUser) api.saveCheckin(entry).catch(console.error); }
   function saveWorkHours(wh) { setWorkHours(wh); if (authUser) api.saveSettings({ workHours: wh, theme }).catch(console.error); }
   function saveEodSetting(val) { const wh = { ...workHours, showEodJournal: val }; setWorkHours(wh); if (authUser) api.saveSettings({ workHours: wh, theme }).catch(console.error); }
+
+  async function switchWorkspace(ws) {
+    setActiveWorkspace(ws);
+    localStorage.setItem('vtm_workspace_id', ws.id);
+    setShowWorkspaceSwitcher(false);
+    // Re-load data for new workspace
+    setTasks([]);
+    setProjects([]);
+    setBookmarks([]);
+    try {
+      const [tasksData, projectsData, bookmarksData] = await Promise.all([
+        api.getTasks(ws.id), api.getProjects(ws.id), api.getBookmarks(ws.id)
+      ]);
+      if (tasksData) setTasks(tasksData.map(t => ({
+        ...t, isFrog: t.is_frog, projectId: t.project_id,
+        createdAt: t.created_at, completedAt: t.completed_at,
+        aiBreakdown: t.ai_breakdown, timeSpent: t.time_spent || 0,
+        estimatedMins: t.estimated_mins,
+        subtasks: typeof t.subtasks === 'string' ? JSON.parse(t.subtasks) : (t.subtasks || []),
+      })));
+      if (projectsData) setProjects(projectsData.map(p => ({ ...p, colorId: p.color_id })));
+      if (bookmarksData) setBookmarks(bookmarksData.map(b => ({ ...b, tags: Array.isArray(b.tags) ? b.tags : [] })));
+    } catch(e) { console.error('switchWorkspace error:', e); }
+  }
+
+  async function createWorkspace(name, icon, color) {
+    try {
+      const ws = await api.saveWorkspace({ name, icon, color });
+      if (ws) {
+        setWorkspaces(prev => [...prev, ws]);
+        await switchWorkspace(ws);
+      }
+    } catch(e) { console.error(e); }
+  }
+
+  async function deleteWorkspace(id) {
+    if (workspaces.length <= 1) return;
+    await api.deleteWorkspace(id);
+    const remaining = workspaces.filter(w => w.id !== id);
+    setWorkspaces(remaining);
+    if (activeWorkspace?.id === id) await switchWorkspace(remaining[0]);
+  }
   function updateTimeSpent(taskId, seconds) { setTasks(ts => ts.map(t => t.id === taskId ? { ...t, timeSpent: seconds } : t)); }
 
   async function addBookmark(bm) {
     const domain = bm.url.replace(/https?:\/\//, '').split('/')[0];
-    const newBm = { ...bm, domain };
+    const newBm = { ...bm, domain, workspace_id: activeWorkspace?.id };
     setBookmarks(prev => [newBm, ...prev]);
     if (authUser) {
       try {
@@ -3723,12 +3887,13 @@ function App() {
   }
 
   function saveProject(project) {
+    const projWithWs = { ...project, workspaceId: activeWorkspace?.id };
     setProjects(prev => {
-      const idx = prev.findIndex(p => p.id === project.id);
-      if (idx >= 0) { const n = [...prev]; n[idx] = project; return n; }
-      return [...prev, project];
+      const idx = prev.findIndex(p => p.id === projWithWs.id);
+      if (idx >= 0) { const n = [...prev]; n[idx] = projWithWs; return n; }
+      return [...prev, projWithWs];
     });
-    if (authUser) api.saveProject(project).catch(console.error);
+    if (authUser) api.saveProject(projWithWs).catch(console.error);
   }
   function deleteProject(id) {
     setProjects(prev => prev.filter(p => p.id !== id));
@@ -3828,6 +3993,16 @@ function App() {
             <div style={{ width: 30, height: 30, background: COLORS.accent, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "white", letterSpacing: 1 }}>tl</div>
             <span style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, letterSpacing: -0.3 }} className="desktop-only">Tasklist.uk</span>
           </a>
+          {activeWorkspace && (
+            <button onClick={() => setShowWorkspaceSwitcher(true)}
+              style={{ display:'flex', alignItems:'center', gap:6, background:COLORS.surface3, border:`1px solid ${COLORS.border}`, borderRadius:8, padding:'5px 10px', cursor:'pointer', fontFamily:'inherit', transition:'all 0.15s', flexShrink:0 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor=COLORS.accent; e.currentTarget.style.background=COLORS.accentDim; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor=COLORS.border; e.currentTarget.style.background=COLORS.surface3; }}>
+              <span style={{ fontSize:14 }}>{activeWorkspace.icon}</span>
+              <span style={{ fontSize:12, fontWeight:600, color:COLORS.text }} className="desktop-only">{activeWorkspace.name}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={COLORS.textMuted} strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          )}
 
           {/* View toggle - pill - centred */}
           <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
@@ -4093,6 +4268,7 @@ function App() {
       {happinessTask && <HappinessModal task={happinessTask} onRate={saveHappiness} onClose={() => setHappinessTask(null)} />}
       {showDailyPlan && <AIDailyPlanModal tasks={tasks} checkins={checkins} onClose={() => setShowDailyPlan(false)} />}
       {editingBookmark && <EditBookmarkModal bm={editingBookmark} onSave={saveEditedBookmark} onClose={() => setEditingBookmark(null)} />}
+      {showWorkspaceSwitcher && <WorkspaceSwitcher workspaces={workspaces} activeWorkspace={activeWorkspace} onSwitch={switchWorkspace} onCreate={createWorkspace} onDelete={deleteWorkspace} onClose={() => setShowWorkspaceSwitcher(false)} />}
       {showJournal && <AIJournalModal user={user} tasks={tasks} workHours={workHours} onSaveWorkHours={saveWorkHours} onClose={() => setShowJournal(false)} />}
       {showProjectManager && <ProjectManagerModal projects={projects} onSave={saveProject} onDelete={deleteProject} onClose={() => setShowProjectManager(false)} />}
     </div>
