@@ -879,7 +879,7 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
       draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       className={`task-card${task.isFrog ? " is-frog" : ""}${isDragging ? " is-dragging" : ""}`}
-      style={ touchAction: 'pan-y', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }
+      style={{ touchAction: 'pan-y', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
       data-task-id={task.id}
       data-col={col || task.status}
     >
