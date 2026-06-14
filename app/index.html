@@ -856,7 +856,7 @@ function ProgressBar({ subtasks }) {
 }
 
 // ── TaskCard ───────────────────────────────────────────────────────────────────
-function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd, isDragging, onSaveBreakdown, projects, col }) {
+function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd, isDragging, onSaveBreakdown, projects }) {
   const isOverdue = task.due && task.due < today() && task.status !== "Done";
   const isDueToday = task.due === today();
   const project = projects?.find(p => p.id === task.projectId);
@@ -872,9 +872,8 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
       draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       className={`task-card${task.isFrog ? " is-frog" : ""}${isDragging ? " is-dragging" : ""}`}
-      style={{ touchAction: 'manipulation', WebkitUserSelect: 'none', userSelect: 'none' }}
+      style={{ touchAction: 'pan-y' }}
       data-task-id={task.id}
-      data-col={col || task.status}
     >
       {/* Priority colour line at top */}
       <div className="task-card-priority-line" style={{ background: task.isFrog ? COLORS.frog : pc.line }} />
@@ -3273,6 +3272,44 @@ function BookmarksView({ bookmarks, onAdd, onDelete, onToggleStar, onToggleRead,
   );
 }
 
+// ── TouchMoveModal ────────────────────────────────────────────────────────────
+function TouchMoveModal({ task, onMove, onClose }) {
+  const STATUS_COLS = ["To Do", "In Progress", "Done"];
+  const colColors = { "To Do": COLORS.textMuted, "In Progress": COLORS.medium, "Done": COLORS.frog };
+  const colIcons = { "To Do": "📋", "In Progress": "⚡", "Done": "✓" };
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:2000, display:'flex', alignItems:'flex-end', justifyContent:'center', padding:'0 0 20px' }}
+      onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={{ background:COLORS.surface, borderRadius:18, width:'100%', maxWidth:420, padding:20, boxShadow:'0 -8px 40px rgba(0,0,0,0.2)', border:`1px solid ${COLORS.border}` }}>
+        <div style={{ fontSize:11, fontWeight:700, color:COLORS.textMuted, textTransform:'uppercase', letterSpacing:0.5, marginBottom:14 }}>Move task to</div>
+        <div style={{ fontSize:14, fontWeight:600, color:COLORS.text, marginBottom:16, padding:'10px 12px', background:COLORS.surface2, borderRadius:8, border:`1px solid ${COLORS.border}` }}>
+          {task.isFrog ? '🐸 ' : ''}{task.title}
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {STATUS_COLS.map(col => {
+            const isCurrentCol = task.status === col;
+            return (
+              <button key={col} onClick={() => { if (!isCurrentCol) onMove(task.id, col); onClose(); }}
+                style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', borderRadius:12,
+                  border:`1.5px solid ${isCurrentCol ? COLORS.border : colColors[col]+'50'}`,
+                  background: isCurrentCol ? COLORS.surface2 : COLORS.surface,
+                  cursor: isCurrentCol ? 'default' : 'pointer', fontFamily:'inherit', transition:'all 0.12s' }}>
+                <span style={{ fontSize:20 }}>{colIcons[col]}</span>
+                <span style={{ flex:1, fontSize:14, fontWeight:600, color: isCurrentCol ? COLORS.textMuted : COLORS.text, textAlign:'left' }}>{col}</span>
+                {isCurrentCol && <span style={{ fontSize:11, color:COLORS.textMuted, fontWeight:600 }}>Current</span>}
+              </button>
+            );
+          })}
+        </div>
+        <button onClick={onClose} style={{ width:'100%', marginTop:12, padding:'12px', borderRadius:10, border:`1px solid ${COLORS.border}`, background:COLORS.surface3, color:COLORS.textDim, fontFamily:'inherit', fontSize:14, fontWeight:600, cursor:'pointer' }}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── WorkspaceSwitcher ─────────────────────────────────────────────────────────
 const WORKSPACE_ICONS = ['📋','💼','🏠','🚀','🎯','💡','🔬','🎨','📚','🏋️','🌱','⚡'];
 const WORKSPACE_COLORS = ['#4f46e5','#0ea5e9','#16a34a','#dc2626','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316','#6366f1'];
@@ -3636,7 +3673,7 @@ function App() {
   const [confetti, setConfetti] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
-  const touchDragRef = React.useRef({ taskId: null, timer: null, active: false, startX: 0, startY: 0, ghost: null });
+  const touchDragRef = React.useRef({});
 
   const [authUser, setAuthUser] = React.useState(null);
   const [dataLoaded, setDataLoaded] = React.useState(false);
@@ -3996,119 +4033,21 @@ function App() {
 
 
 
-  // ── Touch drag (long press) ───────────────────────────────
+  // ── Touch long press → move task picker ────────────────────
+  const [touchMoveTask, setTouchMoveTask] = React.useState(null);
+
   function makeTouchHandlers(taskId) {
+    let timer = null;
     return {
       onTouchStart: (e) => {
-        const touch = e.touches[0];
-        touchDragRef.current.startX = touch.clientX;
-        touchDragRef.current.startY = touch.clientY;
-        touchDragRef.current.taskId = taskId;
-        touchDragRef.current.active = false;
-
-        touchDragRef.current.timer = setTimeout(() => {
-          touchDragRef.current.active = true;
-          setDragging(taskId);
+        timer = setTimeout(() => {
           if (navigator.vibrate) navigator.vibrate(40);
-
-          // Create ghost — clone the actual card element
-          const card = e.currentTarget;
-          const rect = card.getBoundingClientRect();
-          const ghost = card.cloneNode(true);
-          ghost.style.cssText = [
-            'position:fixed',
-            `width:${rect.width}px`,
-            `left:${rect.left}px`,
-            `top:${rect.top}px`,
-            'z-index:9999',
-            'pointer-events:none',
-            'opacity:0.9',
-            'transform:scale(1.04) rotate(1deg)',
-            'box-shadow:0 16px 40px rgba(0,0,0,0.25)',
-            'border-radius:12px',
-            'transition:none',
-          ].join(';');
-          document.body.appendChild(ghost);
-          touchDragRef.current.ghost = ghost;
-          touchDragRef.current.offsetX = touch.clientX - rect.left;
-          touchDragRef.current.offsetY = touch.clientY - rect.top;
-
-          // Make original card semi-transparent but keep it visible
-          card.style.opacity = '0.3';
-          touchDragRef.current.originalCard = card;
+          const task = tasks.find(t => t.id === taskId);
+          setTouchMoveTask(task);
         }, 600);
       },
-
-      onTouchMove: (e) => {
-        const touch = e.touches[0];
-
-        // Cancel if not yet in drag mode and user moved too much (scrolling)
-        if (!touchDragRef.current.active) {
-          const dx = Math.abs(touch.clientX - touchDragRef.current.startX);
-          const dy = Math.abs(touch.clientY - touchDragRef.current.startY);
-          if (dx > 6 || dy > 6) clearTimeout(touchDragRef.current.timer);
-          return;
-        }
-
-        e.preventDefault();
-
-        // Move ghost with finger
-        const ghost = touchDragRef.current.ghost;
-        if (ghost) {
-          ghost.style.left = (touch.clientX - touchDragRef.current.offsetX) + 'px';
-          ghost.style.top  = (touch.clientY - touchDragRef.current.offsetY) + 'px';
-        }
-
-        // Find what's under the finger (hide ghost temporarily)
-        if (ghost) ghost.style.display = 'none';
-        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (ghost) ghost.style.display = '';
-
-        if (!el) return;
-        const taskEl = el.closest('[data-task-id]');
-        const colEl  = el.closest('[data-col]');
-        if (taskEl)      setDragOver(taskEl.dataset.taskId);
-        else if (colEl)  setDragOver(colEl.dataset.col);
-      },
-
-      onTouchEnd: (e) => {
-        clearTimeout(touchDragRef.current.timer);
-
-        // Restore original card opacity
-        if (touchDragRef.current.originalCard) {
-          touchDragRef.current.originalCard.style.opacity = '';
-          touchDragRef.current.originalCard = null;
-        }
-
-        // Remove ghost
-        const ghost = touchDragRef.current.ghost;
-        if (ghost) { ghost.remove(); touchDragRef.current.ghost = null; }
-
-        if (!touchDragRef.current.active) {
-          touchDragRef.current.active = false;
-          return;
-        }
-
-        const touch = e.changedTouches[0];
-
-        // Find drop target
-        let el = null;
-        try {
-          el = document.elementFromPoint(touch.clientX, touch.clientY);
-        } catch(err) {}
-
-        if (el) {
-          const taskEl = el.closest('[data-task-id]');
-          const colEl  = el.closest('[data-col]');
-          if (taskEl)     handleDrop(taskEl.dataset.taskId, taskEl.dataset.col || dragOver);
-          else if (colEl) handleDrop(null, colEl.dataset.col);
-        }
-
-        touchDragRef.current.active = false;
-        touchDragRef.current.taskId = null;
-        setDragging(null);
-        setDragOver(null);
-      },
+      onTouchEnd: () => clearTimeout(timer),
+      onTouchMove: () => clearTimeout(timer),
     };
   }
 
@@ -4408,7 +4347,6 @@ function App() {
                       isDragging={dragging===t.id} onDragStart={() => setDragging(t.id)}
                       onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
                       onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }}
-                      col={col}
                       {...makeTouchHandlers(t.id)} />
                   ))}
                   {colTasks.length === 0 && (
@@ -4468,6 +4406,7 @@ function App() {
       {showDailyPlan && <AIDailyPlanModal tasks={tasks} checkins={checkins} onClose={() => setShowDailyPlan(false)} />}
       {editingBookmark && <EditBookmarkModal bm={editingBookmark} onSave={saveEditedBookmark} onClose={() => setEditingBookmark(null)} />}
       {showWorkspaceSwitcher && <WorkspaceSwitcher workspaces={workspaces} activeWorkspace={activeWorkspace} onSwitch={switchWorkspace} onCreate={createWorkspace} onDelete={deleteWorkspace} onClose={() => setShowWorkspaceSwitcher(false)} />}
+      {touchMoveTask && <TouchMoveModal task={touchMoveTask} onMove={setStatus} onClose={() => setTouchMoveTask(null)} />}
       {showJournal && <AIJournalModal user={user} tasks={tasks} workHours={workHours} onSaveWorkHours={saveWorkHours} onClose={() => setShowJournal(false)} />}
       {showProjectManager && <ProjectManagerModal projects={projects} onSave={saveProject} onDelete={deleteProject} onClose={() => setShowProjectManager(false)} />}
     </div>
