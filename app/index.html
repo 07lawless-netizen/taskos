@@ -317,6 +317,7 @@ const css = `
   .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-1px); border-color: var(--c-border-hover); }
   .task-card.is-frog { border-color: var(--c-frog-border); background: var(--c-frog-dim); }
   .task-card.is-dragging { opacity: 0.4; }
+  .task-card.touch-dragging { opacity: 0.5; transform: scale(0.97); box-shadow: 0 0 0 2px var(--c-accent); }
   .task-card-body { padding: 14px 16px; }
   .task-card-footer {
     padding: 8px 16px 10px;
@@ -855,7 +856,7 @@ function ProgressBar({ subtasks }) {
 }
 
 // ── TaskCard ───────────────────────────────────────────────────────────────────
-function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, isDragging, onSaveBreakdown, projects }) {
+function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart, onDragOver, onDrop, onTouchStart, onTouchMove, onTouchEnd, isDragging, onSaveBreakdown, projects }) {
   const isOverdue = task.due && task.due < today() && task.status !== "Done";
   const isDueToday = task.due === today();
   const project = projects?.find(p => p.id === task.projectId);
@@ -869,7 +870,10 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
   return (
     <div
       draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
+      onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       className={`task-card${task.isFrog ? " is-frog" : ""}${isDragging ? " is-dragging" : ""}`}
+      style={{ touchAction: 'pan-y' }}
+      data-task-id={task.id}
     >
       {/* Priority colour line at top */}
       <div className="task-card-priority-line" style={{ background: task.isFrog ? COLORS.frog : pc.line }} />
@@ -3631,6 +3635,7 @@ function App() {
   const [confetti, setConfetti] = useState(false);
   const [dragging, setDragging] = useState(null);
   const [dragOver, setDragOver] = useState(null);
+  const touchDragRef = React.useRef({ taskId: null, timer: null, active: false, startX: 0, startY: 0, ghost: null });
 
   const [authUser, setAuthUser] = React.useState(null);
   const [dataLoaded, setDataLoaded] = React.useState(false);
@@ -3688,7 +3693,9 @@ function App() {
         api.getTasks(wsId), api.getCheckins(), api.getProjects(wsId), api.getSettings(), api.getBookmarks(wsId)
       ]);
       if (tasksData && tasksData.length > 0) {
-        setTasks(tasksData.map(t => ({
+        setTasks(tasksData
+          .sort((a, b) => (a.position ?? 999999) - (b.position ?? 999999))
+          .map(t => ({
           ...t,
           isFrog: t.is_frog,
           projectId: t.project_id,
@@ -3864,7 +3871,9 @@ function App() {
       const [tasksData, projectsData, bookmarksData] = await Promise.all([
         api.getTasks(ws.id), api.getProjects(ws.id), api.getBookmarks(ws.id)
       ]);
-      if (tasksData) setTasks(tasksData.map(t => ({
+      if (tasksData) setTasks(tasksData
+        .sort((a, b) => (a.position ?? 999999) - (b.position ?? 999999))
+        .map(t => ({
         ...t, isFrog: t.is_frog, projectId: t.project_id,
         createdAt: t.created_at, completedAt: t.completed_at,
         aiBreakdown: t.ai_breakdown, timeSpent: t.time_spent || 0,
@@ -3986,6 +3995,78 @@ function App() {
 
 
 
+  // ── Touch drag (long press) ───────────────────────────────
+  function makeTouchHandlers(taskId) {
+    return {
+      onTouchStart: (e) => {
+        const touch = e.touches[0];
+        touchDragRef.current.startX = touch.clientX;
+        touchDragRef.current.startY = touch.clientY;
+        touchDragRef.current.taskId = taskId;
+        touchDragRef.current.active = false;
+        touchDragRef.current.timer = setTimeout(() => {
+          touchDragRef.current.active = true;
+          setDragging(taskId);
+          // Visual feedback — vibrate if supported
+          if (navigator.vibrate) navigator.vibrate(40);
+          // Create ghost element
+          const card = e.currentTarget;
+          const ghost = card.cloneNode(true);
+          ghost.style.cssText = `position:fixed;z-index:9999;opacity:0.85;pointer-events:none;width:${card.offsetWidth}px;transform:scale(1.03) rotate(1.5deg);box-shadow:0 20px 40px rgba(0,0,0,0.2);border-radius:12px;`;
+          ghost.style.left = (touch.clientX - card.offsetWidth / 2) + 'px';
+          ghost.style.top = (touch.clientY - 40) + 'px';
+          document.body.appendChild(ghost);
+          touchDragRef.current.ghost = ghost;
+        }, 700);
+      },
+      onTouchMove: (e) => {
+        const touch = e.touches[0];
+        const dx = Math.abs(touch.clientX - touchDragRef.current.startX);
+        const dy = Math.abs(touch.clientY - touchDragRef.current.startY);
+        // Cancel long press if user is scrolling
+        if (!touchDragRef.current.active && (dx > 8 || dy > 8)) {
+          clearTimeout(touchDragRef.current.timer);
+          return;
+        }
+        if (!touchDragRef.current.active) return;
+        e.preventDefault();
+        // Move ghost
+        const ghost = touchDragRef.current.ghost;
+        if (ghost) {
+          ghost.style.left = (touch.clientX - ghost.offsetWidth / 2) + 'px';
+          ghost.style.top = (touch.clientY - 40) + 'px';
+        }
+        // Find element under finger
+        ghost && (ghost.style.display = 'none');
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        ghost && (ghost.style.display = '');
+        // Find closest task card or column
+        const taskCard = el?.closest('[data-task-id]');
+        const colEl = el?.closest('[data-col]');
+        if (taskCard) setDragOver(taskCard.dataset.taskId);
+        else if (colEl) setDragOver(colEl.dataset.col);
+      },
+      onTouchEnd: (e) => {
+        clearTimeout(touchDragRef.current.timer);
+        const ghost = touchDragRef.current.ghost;
+        if (ghost) { ghost.remove(); touchDragRef.current.ghost = null; }
+        if (!touchDragRef.current.active) { touchDragRef.current.active = false; return; }
+        const touch = e.changedTouches[0];
+        // Find drop target
+        ghost && (ghost.style.display = 'none');
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        const taskCard = el?.closest('[data-task-id]');
+        const colEl = el?.closest('[data-col]');
+        if (taskCard) handleDrop(taskCard.dataset.taskId, taskCard.dataset.col);
+        else if (colEl) handleDrop(null, colEl.dataset.col);
+        touchDragRef.current.active = false;
+        touchDragRef.current.taskId = null;
+        setDragging(null);
+        setDragOver(null);
+      }
+    };
+  }
+
   function handleDrop(targetId, targetStatus) {
     if (!dragging) return;
     const draggedTask = tasks.find(t => t.id === dragging);
@@ -3999,7 +4080,11 @@ function App() {
       arr.splice(fromIdx, 1);
       if (toIdx >= 0) arr.splice(toIdx, 0, task);
       else arr.push(task);
-      if (authUser) api.saveTask({ ...task, workspaceId: activeWorkspace?.id }).catch(console.error);
+      if (authUser) {
+        api.saveTask({ ...task, workspaceId: activeWorkspace?.id }).catch(console.error);
+        // Save positions of all tasks in updated array
+        arr.forEach((t, i) => { if (t.workspace_id === activeWorkspace?.id || t.workspaceId === activeWorkspace?.id) api.saveTask({ ...t, workspaceId: activeWorkspace?.id, position: i }).catch(console.error); });
+      }
       return arr;
     });
     if (becomingDone) {
@@ -4007,6 +4092,14 @@ function App() {
       if (draggedTask) setTimeout(() => setHappinessTask(draggedTask), wasFrog ? 2000 : 300);
     }
     setDragging(null); setDragOver(null);
+  }
+
+  function saveTaskOrder(updatedTasks) {
+    if (!authUser) return;
+    // Save position for each task in the updated order
+    updatedTasks.forEach((t, i) => {
+      api.saveTask({ ...t, workspaceId: activeWorkspace?.id, position: i }).catch(console.error);
+    });
   }
 
   const frogTask = tasks.find(t => t.isFrog);
@@ -4255,6 +4348,7 @@ function App() {
                   onDragOver={e => { e.preventDefault(); setDragOver(col); }}
                   onDrop={e => { e.preventDefault(); handleDrop(null, col); }}
                   className={dragOver===col ? "drop-zone-active" : ""}
+                  data-col={col}
                   style={{ borderRadius: 12, transition: "all 0.15s", minHeight: 200, padding: dragOver===col ? "8px" : "0" }}>
                   <div className="col-header">
                     <div className="col-status-line" style={{ background: colDotColor[col] }} />
@@ -4267,7 +4361,8 @@ function App() {
                     <TaskCard key={t.id} task={t} projects={projects} onEdit={setEditingTask} onDelete={deleteTask} onFrog={toggleFrog} onStatusChange={setStatus} onSaveBreakdown={saveBreakdown}
                       isDragging={dragging===t.id} onDragStart={() => setDragging(t.id)}
                       onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
-                      onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }} />
+                      onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }}
+                      {...makeTouchHandlers(t.id)} />
                   ))}
                   {colTasks.length === 0 && (
                     <div style={{ border: `2px dashed ${COLORS.border}`, borderRadius: 10, padding: "28px 16px", textAlign: "center", color: COLORS.textMuted, fontSize: 13 }}>
@@ -4292,7 +4387,8 @@ function App() {
                       <TaskCard key={t.id} task={t} projects={projects} onEdit={setEditingTask} onDelete={deleteTask} onFrog={toggleFrog} onStatusChange={setStatus} onSaveBreakdown={saveBreakdown}
                         isDragging={dragging===t.id} onDragStart={() => setDragging(t.id)}
                         onDragOver={e => { e.preventDefault(); setDragOver(t.id); }}
-                        onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }} />
+                        onDrop={e => { e.preventDefault(); handleDrop(t.id, col); }}
+                        {...makeTouchHandlers(t.id)} />
                     ))}
                   </div>
                 )}
