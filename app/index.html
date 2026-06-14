@@ -301,6 +301,13 @@ const css = `
   .col-status-line { width: 3px; height: 16px; border-radius: 2px; flex-shrink: 0; }
 
   /* Task cards */
+  .task-card, .task-card *, .task-card-body, .task-card-body *,
+  .task-card-footer, .task-card-footer * {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    user-select: none !important;
+  }
   .task-card {
     background: var(--c-surface);
     border: 1px solid var(--c-border);
@@ -872,17 +879,18 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
       draggable onDragStart={onDragStart} onDragOver={onDragOver} onDrop={onDrop}
       onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}
       className={`task-card${task.isFrog ? " is-frog" : ""}${isDragging ? " is-dragging" : ""}`}
-      style={{ touchAction: 'pan-y' }}
+      style={ touchAction: 'pan-y', WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }
       data-task-id={task.id}
+      data-col={col || task.status}
     >
       {/* Priority colour line at top */}
       <div className="task-card-priority-line" style={{ background: task.isFrog ? COLORS.frog : pc.line }} />
 
-      <div className="task-card-body">
+      <div className="task-card-body" style={ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }>
         {/* Frog label */}
         {task.isFrog && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.frog, letterSpacing: 0.8, textTransform: "uppercase" }}>🐸 Priority task</span>
+            <span style={ fontSize: 10, fontWeight: 700, color: COLORS.frog, letterSpacing: 0.8, textTransform: "uppercase", WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }>🐸 Priority task</span>
           </div>
         )}
 
@@ -909,13 +917,13 @@ function TaskCard({ task, onEdit, onDelete, onFrog, onStatusChange, onDragStart,
         </div>
 
         {/* Title */}
-        <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.45, color: COLORS.text, marginBottom: task.description ? 5 : 0 }}>
+        <div style={ fontWeight: 600, fontSize: 14, lineHeight: 1.45, color: COLORS.text, marginBottom: task.description ? 5 : 0, WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }>
           {task.title}
         </div>
 
         {/* Description */}
         {task.description && (
-          <div style={{ fontSize: 12, color: COLORS.textDim, lineHeight: 1.55, marginTop: 4 }}>
+          <div style={ fontSize: 12, color: COLORS.textDim, lineHeight: 1.55, marginTop: 4, WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }>
             {task.description.slice(0, 100)}{task.description.length > 100 ? "…" : ""}
           </div>
         )}
